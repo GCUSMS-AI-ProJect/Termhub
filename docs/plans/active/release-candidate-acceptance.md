@@ -1,8 +1,10 @@
-# FileTerm 发行候选跨平台验收计划
+# TermHub 发行候选跨平台验收计划
 
-状态：进行中（功能实现与自动化回归已完成；待 macOS、Windows、Linux 打包应用和真实环境验收）
+状态：进行中（沿用上游验收范围；当前 TermHub 提交的自动化、打包与真实环境结果需按下列清单重新记录）
 
 创建日期：2026-08-16
+
+TermHub 文档适配日期：2026-11-06。历史结果仅对应原记录的提交与平台，不作为当前版本的通过证据。
 
 ## 目标
 
@@ -15,7 +17,7 @@
 | 来源计划                                                                         | 转移的验收范围                                                                                         |
 | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | [本地终端跨平台兼容性与稳定性适配](../completed/local-terminal-compatibility.md) | 三平台打包应用中的默认 shell、Claude/Codex 启动、输入法、复制粘贴、字体、快捷键、resize 和独立分屏 PTY |
-| [本地终端与 Agent MCP 接入](../completed/local-terminal-mcp.md)                  | `fileterm mcp`、已打开 SSH 会话可见性、sudo/su 凭据边界、MFA/确认/REPL 的交互输入错误边界              |
+| [本地终端与 Agent MCP 接入](../completed/local-terminal-mcp.md)                  | TermHub MCP 入口、已打开 SSH 会话可见性、sudo/su 凭据边界、MFA/确认/REPL 的交互输入错误边界            |
 | [WebDAV/S3 远程备份加密计划](../completed/remote-backup-encryption.md)           | v3/v2 兼容、请求体脱敏、一次性密码交互、主动 JSON 导出兼容和三平台恢复流程                             |
 | [本机凭据字段加密](../completed/secret-storage-encryption.md)                    | Windows/Linux 设备标识、三平台实际包中的旧明文迁移、重启读取和公开 bridge 脱敏                         |
 
@@ -25,14 +27,17 @@
 - 使用隔离的测试 profile、临时目录、非生产 SSH/WebDAV/S3 目标和测试凭据；截图、日志和 issue 必须脱敏。
 - 任何密码、API key、私钥口令、备份主密码、终端输出和文件内容都不得进入提交记录或普通验收日志。
 - `N/A` 只能用于平台确实不支持或当前没有对应外设/服务的项目，并在备注中说明原因；不能用 `N/A` 代替未执行。
+- 命令在仓库根目录执行，workspace 保留 `@transterm/*` 名称。Windows 打包 CLI 使用 `TermHub.exe mcp`，macOS/Linux 使用 `transterm mcp`；通过完整程序路径调用，开发态 Windows 使用 `transterm.exe mcp`。
+- 当前源码托管在 Gitee，`.github/workflows/` 仅用于 GitHub Actions；平台构建证据须来自实际运行的 CI 或本机打包流程。
 
 ## 1. 自动化质量门禁
 
 在开始手工验收前，由同一提交执行并保存输出：
 
-- [ ] `npm run typecheck -w @fileterm/tauri`
+- [ ] `npm run typecheck`
 - [ ] `npm run lint`
 - [ ] `npx prettier --check apps/tauri packages/core packages/shared packages/storage`
+- [ ] `npm run test:renderer -w @transterm/tauri`
 - [ ] `npm run test:tauri`
 - [ ] `cargo clippy --manifest-path apps/tauri/src-tauri/Cargo.toml --locked --all-targets --all-features -- -D warnings`
 - [ ] `npm run qa:ai-copilot-fixture-smoke`
@@ -47,7 +52,7 @@
 - [ ] UTF-8 中文/emoji、输入法、复制粘贴、字体、快捷键和 PTY resize 正常。
 - [ ] Claude Code / Codex CLI 能在可用的平台环境中启动；若平台没有安装对应客户端，记录 `N/A` 和原因，不伪造通过。
 - [ ] 本地终端分屏后每个 pane 拥有独立 PTY；关闭或重启一个 pane 不影响其他 pane 的输出、输入和进程。
-- [ ] 保持一个非敏感 SSH tab 已连接，`fileterm mcp` 可以初始化、列出工具并看到该会话；MCP/CLI 不返回凭据或可见 terminal transcript。
+- [ ] 保持一个非敏感 SSH tab 已连接，使用上述平台对应的 TermHub MCP 入口可以初始化、列出工具并看到该会话；MCP/CLI 不返回凭据或可见 terminal transcript。
 - [ ] 普通远程 exec 使用独立 channel，不混入当前可见 SSH tab；切换 tab、分屏、CWD、登录用户、重连或关闭窗口后，旧 tool call fail closed。
 - [ ] sudo/su 分别验证加密 profile、主窗口安全输入和明确的一次性字段；密码不进入命令文本、tool result、日志或截图。
 - [ ] MFA、验证码、确认、安装器和 REPL 返回 `REMOTE_INTERACTIVE_INPUT_REQUIRED`，不创建隐藏 PTY，也不污染可见终端。
@@ -77,17 +82,17 @@ Copilot 的 Provider、模式、审批和重试细项沿用[跨平台发行验�
 
 每个平台至少记录一个实际包和一组脱敏测试数据。结果列只允许 `pass`、`fail` 或带原因的 `N/A`。
 
-| 平台    | 发行产物             | 应用版本/提交 | 终端与 MCP | 备份加密 | 本机凭据 | 证据位置 |
-| ------- | -------------------- | ------------- | ---------- | -------- | -------- | -------- |
-| macOS   | `.app` / `.dmg`      |               |            |          |          |          |
-| Windows | NSIS / `.msi`        |               |            |          |          |          |
-| Linux   | `.deb` / `.AppImage` |               |            |          |          |          |
+| 平台    | 发行产物               | 应用版本/提交 | 终端与 MCP | 备份加密 | 本机凭据 | 证据位置 |
+| ------- | ---------------------- | ------------- | ---------- | -------- | -------- | -------- |
+| macOS   | `.app` / `.dmg`        |               |            |          |          |          |
+| Windows | NSIS / portable `.exe` |               |            |          |          |          |
+| Linux   | `.deb` / `.AppImage`   |               |            |          |          |          |
 
 证据记录模板：
 
 ```text
 platform: macOS 15 / Windows 11 / Ubuntu 24.04
-fileterm commit: <commit>
+TermHub commit: <commit>
 version: <version>
 artifact: <signed-or-unsigned artifact label>
 provider/target: <non-sensitive label>
@@ -100,6 +105,8 @@ evidence: <redacted screenshot/log/CI URL>
 
 ## 6. 退出条件
 
+- [ ] 窗口、应用属性、CLI 帮助及安装包显示 TermHub；保留 `com.transterm.desktop`、`@transterm/*`、`transterm_*` MCP 工具名和既有数据格式标识，验证已有配置可读取。
+- [ ] 发布仓库、下载入口和运行时更新地址属于预期的 TermHub 渠道；Windows 签名更新所需公钥、私钥环境配置和更新清单已配套验证。本地不签名安装包不能作为自动更新验签通过的证据。
 - [ ] 自动化门禁全部通过，或每个例外都有独立 issue、风险说明和明确的发布决策。
 - [ ] macOS、Windows、Linux 的实际包都有结果和脱敏证据；不能用单一平台结果替代其他平台。
 - [ ] 终端/MCP、远程备份和本机凭据三组验收均达到发布决定要求，没有未解释的 `fail`。

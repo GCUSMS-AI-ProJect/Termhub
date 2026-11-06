@@ -1,270 +1,124 @@
-> Fork notice: this is the TermHub source fork. No TermHub release packages have been published by this change. The documentation below is adapted from FileTerm; see [README.md](README.md) for local setup and source attribution.
+# TermHub
 
-<a id="readme-top"></a>
+面向开发者和运维人员的桌面远程工作台，将终端、远程文件管理、传输任务和 AI 助手集中到一个工作区。
 
-<div align="center">
-  <br />
-  <img alt="TermHub" src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=800&size=34&duration=2600&pause=900&color=38BDF8&center=true&vCenter=true&width=760&lines=TermHub;SSH+%2B+SFTP+%2B+FTP+Workspace;A+Modern+Remote+Desktop+Workbench" />
-  <br />
-  <br />
-  <p><strong>一个为开发者和运维场景打造的现代桌面远程工作台，正式版现已发布。</strong></p>
-  <p>SSH 终端、SFTP 与 FTP/FTPS 文件、多标签工作区和传输任务中心，收束到一个顺手的桌面客户端里。</p>
-  <p>
-    <kbd>中文</kbd>
-    <kbd><a href="./README.md">English</a></kbd>
-  </p>
-  <p>
-    <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-111827?style=for-the-badge"></a>
-    <a href="https://github.com/gcusms/fileterm/releases/latest"><img alt="Status" src="https://img.shields.io/badge/status-Official%20Release-22C55E?style=for-the-badge"></a>
-    <img alt="macOS" src="https://img.shields.io/badge/macOS-Apple%20Silicon%20%7C%20Intel-000000?style=for-the-badge&logo=apple&logoColor=white">
-    <img alt="Windows" src="https://img.shields.io/badge/Windows-x64%20%7C%20ARM64-0078D4?style=for-the-badge&logo=windows&logoColor=white">
-    <img alt="Debian" src="https://img.shields.io/badge/Debian-deb-A80030?style=for-the-badge&logo=debian&logoColor=white">
-    <img alt="Fedora RPM" src="https://img.shields.io/badge/Fedora-rpm-51A2DA?style=for-the-badge&logo=fedora&logoColor=white">
-    <img alt="Arch Linux Pacman" src="https://img.shields.io/badge/Arch_Linux-pacman-1793D1?style=for-the-badge&logo=archlinux&logoColor=white">
-    <a href="https://github.com/gcusms/fileterm/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/gcusms/fileterm?style=for-the-badge&logo=github&label=stars"></a>
-  </p>
-</div>
+[项目首页](./README.md) · [English](./README_EN.md) · [源码仓库](https://gitee.com/ai-design-gcusms/termhub)
 
----
+## 项目状态与来源
 
-## 下载正式版
+当前源码版本为 `2.3.1-beta.10`。本仓库是基于 FileTerm 的 TermHub 源码分支；仓库中的历史构建记录不代表已经发布可下载的 TermHub 正式版。当前请按照下文从源码运行或自行构建安装包。
 
-前往 [GitHub Releases](https://github.com/gcusms/fileterm/releases/latest) 下载最新正式版：
+- 上游项目：[St0ff3l/fileterm](https://github.com/St0ff3l/fileterm)，来源提交为 `ef044caa8868d9edbf5eb0165d31865009897b0b`。
+- 来源 fork：[gcusms/fileterm](https://github.com/gcusms/fileterm)，用于说明源码来源，不是 TermHub 安装包下载入口。
+- 内置 REA 版本为 `6.7.0`，使用固定依赖与独立运行时。
+- 保留原作者版权、[MIT 许可证](./LICENSE)和[第三方许可声明](./THIRD_PARTY_NOTICES.md)。
 
-分平台安装步骤与依赖说明请阅读[简体中文安装指南](https://github.com/gcusms/fileterm/blob/main/docs/installation/zh-CN.md)，也可查看 [English Installation Guide](https://github.com/gcusms/fileterm/blob/main/docs/installation/en-US.md)。
-
-- **macOS**：提供 Apple Silicon（arm64）和 Intel（x64）安装包。
-- **Windows**：提供 x64 与 ARM64 NSIS 安装包和免安装 portable `.exe`；已安装版本会下载对应架构的更新包、验签并在重启后更新。
-- **Linux**：x86_64 与 arm64 提供 `.deb`、`.rpm` 和 `.AppImage`；另提供 Pacman `.pkg.tar.zst`：x86_64 适用于 Arch 系，aarch64 适用于 Arch Linux ARM。
-
-### Linux 安装包
-
-所有 Linux 包都带有 TermHub 启动器、应用图标、AppStream 元数据和 MIT 许可证。`.deb`、`.rpm`、Pacman 包会声明运行时依赖，由系统包管理器安装；RPM 包需要发行版提供 WebKitGTK 4.1 与 OpenSSL 3。AppImage 无需安装，可直接运行，并提供 `.zsync` 文件供 AppImageUpdate 差量更新；它使用随包依赖，但仍要求系统 glibc 与 Ubuntu 22.04 构建基线兼容。
-
-| 格式           | 架构与适用系统                                                                  | 安装或运行                                                                                                                                  |
-| -------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `.AppImage`    | x86_64、arm64；适用于支持 AppImage 的主流 Linux 桌面发行版                      | `chmod +x transterm-*-linux-<架构>.AppImage && ./transterm-*-linux-<架构>.AppImage`                                                         |
-| `.deb`         | x86_64、arm64；Debian、Ubuntu 及其衍生版                                        | `sudo apt install ./transterm-<版本>-linux-<架构>.deb`                                                                                      |
-| `.rpm`         | x86_64、arm64；Fedora、openSUSE 等提供 WebKitGTK 4.1 与 OpenSSL 3 的 RPM 发行版 | Fedora 使用 `sudo dnf install ./transterm-<版本>-linux-<架构>.rpm`；openSUSE 使用 `sudo zypper install ./transterm-<版本>-linux-<架构>.rpm` |
-| `.pkg.tar.zst` | x86_64；Arch Linux、Manjaro、EndeavourOS 等 Arch 系；aarch64；Arch Linux ARM    | `sudo pacman -U ./transterm-<版本>-linux-<架构>.pkg.tar.zst`                                                                                |
-
-Arch Linux 官方发行版目前仅支持 x86_64；ARM64 包面向独立的 Arch Linux ARM 发行版，不能在 x86_64 系统上安装。下载时选择对应的 `linux-x86_64` 或 `linux-arm64` 资产。AppImage 若不能双击启动，可在终端为对应架构的文件执行 `chmod +x` 后运行。
-
-首次启动时，中文系统语言环境默认显示中文，其他语言环境默认显示英文。可以在设置中手动切换语言；已保存的选择会在之后的启动中优先使用。
-
-macOS 与 Linux 的“检查更新”会打开对应的 GitHub Release 下载页，由用户自行下载和安装；Windows 正式安装版使用签名的应用内更新。
-
-需要从源码运行或参与开发？请继续阅读 [从源码开始](#从源码开始)。
-
-## TermHub 是什么
-
-TermHub 面向开发者和运维人员的日常远程工作：将远程终端、文件管理、传输任务和连接配置集中到同一个桌面工作区。
-
-- 使用 SSH 时，终端与 SFTP 文件面板自然联动。
-- 使用 FTP/FTPS 时，界面直接进入专注文件操作的工作流。
-- 多个连接以标签页并行运行，互不打断。
-- 上传、下载、进度与错误统一进入传输任务中心。
-- 连接配置、工作区状态和主题体验均为长期使用设计。
-
-<p align="center"><img width="900" alt="TermHub workspace preview" src="./docs/assets/transterm-dark-light-35deg.png" /></p>
-
-正式版聚焦最常用的 `SSH / SFTP / FTP / FTPS` 工作流：把远程终端、文件操作和传输任务做稳、做顺、做漂亮。
+产品名称为 **TermHub**。为兼容现有数据和工具，源码 workspace、Rust crate、bridge、主题及 MCP 协议继续使用 `transterm` 标识，应用数据目录标识保留 `com.transterm.desktop`。Windows 打包程序为 `TermHub.exe`，开发态二进制为 `transterm.exe`。
 
 ## 核心能力
 
-| 能力              | 说明                                                                              |
-| ----------------- | --------------------------------------------------------------------------------- |
-| SSH 连接管理      | 新增、编辑、删除 SSH 配置；支持文件夹分组和 JSON 持久化。                         |
-| FTP/FTPS 连接管理 | 使用独立于 SSH 的连接模型，支持安全 FTP 传输。                                    |
-| SSH 终端          | 基于 xterm.js，支持输入输出、自适应尺寸、搜索、剪贴板互通和悬浮命令输入条。       |
-| SFTP 文件管理     | 支持远程目录浏览、读写、新建、删除、重命名和权限修改。                            |
-| FTP/FTPS 文件管理 | 提供 FTP/FTPS 会话、远程目录浏览、文件操作与可恢复传输。                          |
-| 文件编辑器        | 基于 Monaco Editor 的双栏文件树与编辑区，支持语法高亮、查找替换、编码和语言切换。 |
-| 终端目录同步      | SSH 终端当前工作目录可与文件管理器双向同步。                                      |
-| Root 权限同步     | 感知终端中的 `sudo` / `su`，让文件管理器同步对应权限上下文。                      |
-| 虚拟文件列表      | 通过虚拟滚动高效展示大型远程目录。                                                |
-| 传输任务中心      | 统一管理上传、下载、断点续传、进度、速度、取消及文件夹递归传输。                  |
-| 工作区标签        | 支持多标签并行连接、断开、重连、状态持久化和标签切换动效。                        |
-| 命令模板          | 支持快捷命令、文件夹分组、参数占位符和一键发送。                                  |
-| 主题与桌面壳      | 支持深色/浅色主题、侧栏、文件抽屉、焦点模式和独立管理窗口。                       |
+| 能力       | 说明                                                              |
+| ---------- | ----------------------------------------------------------------- |
+| 连接与终端 | SSH、本地终端、Telnet、串口；多标签工作区及分屏                   |
+| SSH 网络   | 主机密钥验证、密码/密钥/MFA、代理、跳板和 SSH 隧道                |
+| 远程文件   | SFTP、FTP/FTPS 浏览与文件操作；SSH 终端目录及权限上下文联动       |
+| 文件编辑   | Monaco 编辑器、语法高亮、编码选择、文件修改恢复与撤销             |
+| 传输管理   | 上传、下载、递归目录传输、进度、取消及可恢复传输                  |
+| AI 助手    | 模型配置、流式对话、附件、终端上下文和受审批的工具执行            |
+| REA 分析   | 默认关闭；支持本地与 POSIX SSH 主机上的分析工具                   |
+| 配置与安全 | 连接分组、密钥库、设备绑定凭据加密、会话锁定及 WebDAV/S3 加密备份 |
+| 桌面体验   | 明暗主题、自定义主题、独立管理窗口、文件抽屉和焦点模式            |
 
-## 技术栈
+功能是否适用取决于连接协议、服务端能力及本机环境。Telnet、串口不提供 SFTP 能力；REA 不包含模型，需要配置支持工具调用的模型服务，额外分析引擎需在运行主机上具备相应依赖。
 
-| Desktop  | Renderer     | Language          | Terminal | Editor        | Protocols                             | Tooling                |
-| -------- | ------------ | ----------------- | -------- | ------------- | ------------------------------------- | ---------------------- |
-| Tauri v2 | React + Vite | Rust + TypeScript | xterm.js | Monaco Editor | russh/russh-sftp + suppaftp + tokio-* | Cargo + npm workspaces |
-
-```txt
-renderer UI    -> React workspace, tabs, files, terminal
-Tauri bridge   -> typed Rust command/event boundary
-Rust services  -> session lifecycle, storage, update and protocol services
-protocols      -> russh SSH/SFTP, FTP/FTPS, Telnet and Serial adapters
-theme system   -> tokens -> vars -> skins -> terminal colors
-```
-
-## 架构原则
-
-```txt
-Renderer UI
-  -> Application State
-    -> Tauri API bridge
-      -> Rust commands/events
-        -> Desktop services
-          -> Session workers
-            -> Protocol clients
-```
-
-- `packages/core` 是领域模型的 single source of truth。
-- Renderer 不直接访问 SSH、SFTP、FTP/FTPS protocol clients。
-- 所有系统能力必须通过 `Rust commands/events -> tauri-api.ts -> renderer` 暴露。
-- SSH/SFTP 与 FTP/FTPS 在 controller/protocol 层保持分离。
-- 传输进度统一进入 transfer system，不在组件中分散维护。
-
-完整架构说明见 [docs/architecture.md](./docs/architecture.md)。
+详见 [AI 助手](./docs/ai-copilot.md)、[REA](./docs/rea.md)与[架构说明](./docs/architecture.md)。
 
 ## 从源码开始
 
 ### 环境要求
 
-- Node.js >= 22.12.0
-- npm
-- Rust stable 与当前平台所需的 Tauri 系统依赖
+- Node.js：22.x 至少 22.19、24.x 至少 24.11，或 26 及以上；内置 REA 准备脚本会校验版本。
+- npm、Rust stable，以及当前平台的 Tauri v2 原生构建依赖。
+- Windows：MSVC C++ Build Tools、Windows SDK、WebView2 Runtime 和 NASM；`cargo` 与 `nasm` 需在 PATH 中。
+- macOS：Xcode Command Line Tools。
+- Linux：GTK、WebKitGTK 4.1 等开发依赖；具体发行版说明见[安装指南](./docs/installation/zh-CN.md)。
 
-Linux（Ubuntu/Debian）还需要安装 GTK 与 WebKit 运行时：
+所有命令均在包含根 `package.json` 的仓库目录执行：
 
-```bash
-# Ubuntu 24.04 及以上
-sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf build-essential libssl-dev
-
-# Ubuntu 22.04 请将 4.1 替换为 4.0
+```powershell
+git clone https://gitee.com/ai-design-gcusms/termhub.git
+cd termhub
+npm ci
+npm run dev
 ```
 
-`npm run dev` 需要本地图形会话。纯 SSH、无桌面的服务器或缺少 XWayland 的 Wayland 会话下 GTK 无法初始化；此时启动脚本会打印当前的显示环境变量与排查建议，而不是直接抛出 GTK panic。
+如果已克隆仓库，直接进入仓库目录执行 `npm ci` 和 `npm run dev`。
 
-### 安装与启动
+开发启动会自动构建共享包并准备内置 REA。首次准备需要下载 npm 依赖；完整桌面运行需要本地图形会话。REA 运行时按当前 Node.js 版本、操作系统与架构准备，跨平台或跨架构构建不能直接复用其他平台的资源。
 
-```bash
-npm install
-npm run dev # 默认启动 Tauri/Rust 运行时
+### 仅预览界面
+
+```powershell
+npm run build:packages
+npm run dev:renderer -w @transterm/tauri
 ```
 
-`dev`、`build`、`typecheck` 会自动先构建 `@transterm/core`、`@transterm/shared`、`@transterm/storage`（它们的入口指向 `dist/`）。全新克隆后无需手动构建这些包。
+默认开发地址为 `http://localhost:5188`。浏览器使用预览模式，真实 SSH/SFTP、本机文件系统和其他桌面能力需要 Tauri 运行时。
 
-### 常用命令
+## 检查与构建
 
-```bash
-npm run dev          # Tauri/Rust
-npm run test         # Tauri/Rust 测试
+```powershell
 npm run typecheck
-npm run build        # Tauri/Rust 生产二进制
-npm run release:mac
-npm run release:win
-npm run release:linux
+npm run lint
+npx prettier --check apps/tauri packages/core packages/shared packages/storage
+npm run test:renderer -w @transterm/tauri
+npm run test:tauri
+cargo clippy --manifest-path apps/tauri/src-tauri/Cargo.toml --locked --all-targets --all-features -- -D warnings
 ```
 
-### 发布与更新
+类型检查及开发/构建入口会自动构建所需共享包。Rust 测试需要原生构建环境；自动化通过之后，仍需对实际安装包和真实协议连接进行验收，见[发行候选验收计划](./docs/plans/active/release-candidate-acceptance.md)。
 
-- 推送位于 `release/*` 分支提交上的 `vX.Y.Z` tag，会运行 Tauri 专用 Release Action，发布 macOS arm64/x64 DMG、Windows x64/arm64 NSIS 安装包和便携版，以及 Linux x86_64/arm64 `.deb`、`.rpm`、`.AppImage` 和 Arch x86_64/Arch Linux ARM aarch64 `.pkg.tar.zst` 包。
-- Windows Action 为两种架构分别生成带签名的 NSIS 安装器、免安装 `*-windows-x64-portable.exe` / `*-windows-arm64-portable.exe` 和 `.sig` 文件，再合并到含架构专属更新条目的 `latest.json`；客户端按自身架构验签更新。portable 版本不写入安装器注册信息，配置保存到可执行文件旁的 `config/` 文件夹，首次运行空目录时会迁移已有安装版配置，运行前仍需系统已有 WebView2 Runtime。凭据加密仍绑定当前 Windows 设备，复制到另一台电脑后需重新配置凭据。
-- 仓库需要配置 GitHub Actions Secret `TAURI_SIGNING_PRIVATE_KEY`。它是 Tauri updater 私钥内容，只能保存为 GitHub Secret，绝不能提交到仓库。
-- macOS 发行包使用 ad hoc 签名（不使用 Apple Developer 证书或公证），不使用应用内 updater：检查到新版本后跳转 GitHub Release，由用户选择下载包；首次下载运行仍可能需要在“隐私与安全性”中手动放行。
+Windows 本地构建：
+
+```powershell
+npm run build:win
+```
+
+该命令使用现有 NSIS 配置，不生成自动更新签名产物。程序生成在 `apps/tauri/src-tauri/target/release/TermHub.exe`，安装包位于同级 `bundle/nsis/`。直接分发程序时，应同时保留相邻的完整 `rea/` 运行时及许可文件。
+
+其他构建入口为 `npm run build`、`npm run release:mac`、`npm run release:win` 和 `npm run release:linux`；release 命令需要相应平台工具链及发行配置。
+
+使用 `--no-bundle` 或直接分发 EXE 时，还需检查原生 DLL 依赖。本次 Windows GNU 构建需要相邻的 `WebView2Loader.dll`，它不能由 WebView2 Runtime 安装替代；修复步骤、独立运行时和本机验证范围见 [Windows 本地启动记录](./docs/quality/windows-local-startup.md)。
+
+## 发布与更新现状
+
+当前源码托管于 Gitee，仓库保留的 `.github/workflows/` 是 GitHub Actions 配置；推送到 Gitee 不会自动运行这些工作流。
+
+现有发布脚本包含 macOS、Windows 和 Linux 的打包流程，但这不代表已有对应平台的 TermHub 发行包。发布前需要配置实际发布仓库、产物渠道、签名与更新地址，并完成平台验收。
+
+Windows 更新配置 `apps/tauri/src-tauri/tauri.windows.conf.json` 仍指向 `gcusms/fileterm`，且 `plugins.updater.pubkey` 为空，因此当前不能作为已配置完成的 TermHub 签名自动更新渠道。发布者需要设置自己的公钥、更新端点以及发布环境中的 `TAURI_SIGNING_PRIVATE_KEY`；签名私钥不得提交到源码。
+
+本次文档整理不改变运行时更新地址。安装包、版本说明和更新清单应属于同一发布渠道，不能把上游 FileTerm 的下载页当作 TermHub 发布页。
 
 ## 仓库结构
 
-```txt
-TermHub/
-  apps/
-    tauri/                   # Tauri + Rust desktop app
-      src/
-        bridge/              # typed Tauri command/event API
-        renderer/            # React workspace UI
-      src-tauri/             # Rust commands, services, sessions and bundling
-  packages/
-    core/                    # domain types
-    storage/                 # repository abstractions
-    shared/                  # shared constants and utilities
-  docs/
-    architecture.md          # architecture map
-    roadmap.md               # product roadmap
-    plans/                   # active and completed execution plans
-    decisions/               # architecture decisions
-    quality/                 # quality and release checks
-  AGENTS.md                  # map for human and AI collaborators
+```text
+apps/tauri/
+  src/bridge/          TypeScript 命令与事件桥接
+  src/renderer/        React 工作区界面
+  src-tauri/src/       Rust commands、services、sessions 与存储
+  rea-runtime/         REA 独立依赖与锁文件
+packages/core/         领域类型与接口契约
+packages/shared/       共享常量与工具
+packages/storage/      存储抽象
+vendor/russh/          本地 SSH 库补丁
+docs/                  架构、设计、计划与质量记录
 ```
 
-## 路线图
+系统能力沿 `renderer → bridge → Rust commands → services → sessions` 调用。共享领域类型以 `packages/core` 为准，协议客户端由 Rust 管理。
 
-正式版后的演进重点：
+## 参与开发与反馈
 
-1. 持续提升 `SSH / SFTP / FTP / FTPS` 主链路的稳定性与可用性。
-2. 继续拆分 Tauri workspace、session service 和 renderer 的职责，进一步明确分层边界。
-3. 将领域类型继续收敛到 `packages/core`。
-4. 持续完善传输任务、错误提示、主题、终端输入、文件抽屉和桌面壳体验。
-5. 维护 macOS、Windows 与 Linux 正式版的分发和发布质量。
+请在 [TermHub 仓库](https://gitee.com/ai-design-gcusms/termhub)反馈问题，附上操作系统、应用版本、复现步骤及脱敏日志。
 
-完整计划见 [docs/roadmap.md](./docs/roadmap.md)。
-
-## 开源组件
-
-- [xterm.js](https://xtermjs.org/)：用于 SSH 终端渲染、输入输出和窗口尺寸适配。
-- [Monaco Editor](https://microsoft.github.io/monaco-editor/)：用于文件编辑、语法高亮和查找替换。
-- 随应用分发的字体和图标字体：许可证与来源见 [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md)。
-
-## 参与贡献
-
-仓库把代码库本身作为记录系统：
-
-- [AGENTS.md](./AGENTS.md) 是协作入口地图。
-- [docs/architecture.md](./docs/architecture.md) 记录稳定的架构事实。
-- [docs/plans/active](./docs/plans/active) 存放跨层进行中的计划。
-- [docs/decisions](./docs/decisions) 记录已确认的架构选择。
-- [.agents/extensions](./.agents/extensions) 存放功能草案与扩展设计。
-
-如果计划贡献较大的功能，建议先补充一份 active plan，再开始编码。
-
-## 贡献者
-
-感谢每一位让 TermHub 变得更好的贡献者。
-
-<table>
-  <tr>
-    <td align="center" width="180">
-      <a href="https://github.com/St0ff3l">
-        <img src="https://avatars.githubusercontent.com/St0ff3l?s=120" width="72" height="72" alt="St0ff3l" />
-        <br />
-        <sub><b>St0ff3l</b></sub>
-      </a>
-    </td>
-    <td>构建了 Rust/Tauri 后端核心，打通 command/event、会话控制、文件能力与工作区状态等核心链路。</td>
-  </tr>
-  <tr>
-    <td align="center" width="180">
-      <a href="https://github.com/Flashhhhhhzj">
-        <img src="https://avatars.githubusercontent.com/Flashhhhhhzj?s=120" width="72" height="72" alt="Flashhhhhhzj" />
-        <br />
-        <sub><b>Flashhhhhhzj</b></sub>
-      </a>
-    </td>
-    <td>重构并设计前端样式，统一设计语言，推动主题 token、组件皮肤和整体视觉体验成形。</td>
-  </tr>
-</table>
-
-## 社区交流
-
-扫码加入 **TermHub** 微信交流群，与开发者和其他用户交流使用体验、问题反馈与后续版本动态。
-
-也可加入 QQ 群：`534418986`。
-
-![TermHub 微信交流群二维码](./docs/assets/transterm-wechat-group-qr.jpg)
-
-## 支持项目
-
-如果 TermHub 对你有帮助，欢迎到 [GitHub](https://github.com/gcusms/fileterm) 点亮 Star：
-
-<a href="https://github.com/gcusms/fileterm/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/gcusms/fileterm?style=for-the-badge&logo=github&label=Star%20transterm"></a>
-
-## 开源协议
-
-TermHub 源代码使用 [MIT License](./LICENSE) 开源；随应用分发的字体和图标字体遵循各自许可证，详见 [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md)。
-
-<p align="right"><a href="#readme-top">回到顶部</a></p>
+开发约束见 [AGENTS.md](./AGENTS.md)，架构见 [docs/architecture.md](./docs/architecture.md)，后续规划见 [docs/roadmap.md](./docs/roadmap.md)。历史验收记录只对应记录中的版本、提交与平台，不代表当前源码已重新验证。
