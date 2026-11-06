@@ -1,0 +1,12 @@
+[Desktop Entry]
+Name=TermHub
+Comment=Remote terminal and file management workspace
+Exec=transterm %U
+Icon=transterm
+Terminal=false
+Type=Application
+Categories=Utility;Network;
+Keywords=SSH;SFTP;FTP;Terminal;
+# Match Tauri's stable Linux application ID for GNOME window grouping.
+NoDisplay=true
+StartupWMClass=transterm

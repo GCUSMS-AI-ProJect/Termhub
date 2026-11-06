@@ -1,0 +1,203 @@
+.settings-ai-panel .ai-settings-provider-card,
+.settings-ai-panel .ai-settings-privacy-card,
+.settings-ai-panel .ai-settings-preset-picker {
+  border-radius: 12px;
+  border-color: var(--border-subtle);
+  background: color-mix(in srgb, var(--surface-elevated) 65%, var(--surface-panel));
+}
+
+.settings-ai-panel .ai-settings-service-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 14px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.ai-settings-service-hint > .ai-icon {
+  flex: none;
+  margin-top: 3px;
+}
+
+.settings-ai-panel .ai-settings-model-tag {
+  height: auto;
+  min-height: 30px;
+  max-width: 100%;
+  gap: 0;
+  padding: 0 3px 0 0;
+  border-color: var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-panel);
+  color: var(--text-secondary);
+  cursor: default;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+
+.settings-ai-panel .ai-settings-model-tag.is-active {
+  border-color: var(--border-strong);
+  background: var(--surface-active);
+  color: var(--text-primary);
+}
+
+.settings-ai-panel .ai-settings-model-activate {
+  min-width: 0;
+  min-height: 28px;
+  height: auto;
+  gap: 5px;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.ai-settings-model-activate > .ai-settings-model-tag-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-ai-panel .ai-settings-model-tag-remove {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0;
+  border-radius: 6px;
+}
+
+.ai-settings-capability-details {
+  grid-column: 1 / -1;
+  min-width: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--surface-panel);
+}
+
+.ai-settings-capability-details > summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 6px 10px;
+  border-radius: 9px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.ai-settings-capability-details > summary::after {
+  width: 6px;
+  height: 6px;
+  margin-left: auto;
+  margin-right: 4px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  content: '';
+  transform: rotate(45deg);
+  transition: transform 160ms ease;
+}
+
+.ai-settings-capability-details[open] > summary::after {
+  transform: rotate(225deg);
+}
+
+.ai-settings-capability-details > summary:hover {
+  background: var(--surface-hover);
+}
+
+.ai-settings-capability-details > summary:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+.ai-settings-capability-details > .ai-settings-model-capability-auto-hint {
+  display: block;
+  padding: 0 10px 8px;
+}
+
+.ai-settings-capability-details > .ai-model-capability-editor {
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--border-subtle);
+  border-radius: 0 0 9px 9px;
+}
+
+.settings-ai-panel button {
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 100ms ease;
+}
+
+.settings-ai-panel button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-ai-panel button,
+  .settings-ai-panel .ai-settings-model-tag,
+  .ai-settings-capability-details > summary::after {
+    transition: none;
+  }
+
+  .settings-ai-panel button:active:not(:disabled) {
+    transform: none;
+  }
+}
+.ai-provider-diagnostics {
+  margin-block: 16px;
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--surface-panel);
+}
+
+.ai-provider-diagnostics-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ai-provider-diagnostics p {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  font-size: 12px;
+}
+
+.ai-provider-diagnostics ul {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ai-provider-diagnostics li {
+  display: grid;
+  grid-template-columns: 16px 1fr auto;
+  gap: 4px 8px;
+  align-items: center;
+  font-size: 12px;
+}
+
+.ai-provider-diagnostics li p {
+  grid-column: 2 / -1;
+  overflow-wrap: anywhere;
+}
+.ai-provider-diagnostics li[data-status='passed'] > svg {
+  color: var(--status-success);
+}
+.ai-provider-diagnostics li[data-status='failed'] > svg {
+  color: var(--status-danger);
+}

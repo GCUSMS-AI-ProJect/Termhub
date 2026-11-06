@@ -1,0 +1,282 @@
+import './tab-bar.css'
+import { useRef, type MouseEvent, type ReactNode } from 'react'
+import type { WorkspaceTab } from '@transterm/core'
+import { tabStatusClass } from '../../app/app-utils'
+import { t } from '../../i18n'
+import { handleHorizontalWheelScroll } from '../common/horizontal-scroll'
+import { CloseButton } from '../common/close-button'
+import { AppIcon } from '../common/app-icon'
+import { StatusIndicator } from '../common/status-indicator'
+import { usePointerSortFallback } from '../../hooks/use-pointer-sort-fallback'
+import type { HostNavigation } from './use-host-navigation'
+
+export type OrderedTabEntry =
+  | { key: string; kind: 'local'; id: string; title: string; tabKind: 'home' | 'system'; sessionTabId?: string }
+  | { key: string; kind: 'session'; tab: WorkspaceTab }
+
+export type TabContextTarget =
+  | { kind: 'local'; id: string; title: string }
+  | {
+      kind: 'session'
+      id: string
+      title: string
+      status: WorkspaceTab['status']
+      sessionType: WorkspaceTab['sessionType']
+    }
+
+function getSessionTabTitle(tab: WorkspaceTab) {
+  if (tab.sessionType === 'local' && (!tab.title || tab.title === 'Local Terminal')) {
+    return t.localTerminal
+  }
+  return tab.title || t.untitledTab
+}
+
+const MIDDLE_MOUSE_BUTTON = 1
+
+export interface TabBarProps {
+  activeHomeTabId: string | null
+  activeSessionTabId: string | null
+  homeBrandContent?: ReactNode
+  isAiCopilotAvailable: boolean
+  isAiCopilotOpen: boolean
+  showAiCopilotToggle?: boolean
+  isWorkspaceFocusMode: boolean
+  onAddHomeTab(): void
+  onActivateHome(id: string): void
+  onActivateSession(id: string): void
+  onCloseHomeTab(event: MouseEvent<HTMLElement>, id: string): void
+  onCloseSessionTab(event: MouseEvent<HTMLElement>, id: string): void
+  onDragEnd(): void
+  onDragEnter(targetKey: string): void
+  onDragStart(tabKey: string): void
+  onOpenTabContext(event: MouseEvent<HTMLDivElement>, target: TabContextTarget): void
+  onOpenSettings(): void
+  onToggleAiCopilot(): void
+  onToggleWindowMaximize(): void
+  onToggleWorkspaceFocus(): void
+  orderedTabs: OrderedTabEntry[]
+  /** When set, only the active host's tabs are shown. */
+  hostNavigation?: HostNavigation
+}
+
+// Middle-button presses would otherwise start WebKit's autoscroll or paste on Linux.
+function preventMiddleClickAutoscroll(event: MouseEvent<HTMLElement>) {
+  if (event.button === MIDDLE_MOUSE_BUTTON) event.preventDefault()
+}
+
+export function TabBar({
+  activeHomeTabId,
+  activeSessionTabId,
+  homeBrandContent,
+  isAiCopilotAvailable,
+  isAiCopilotOpen,
+  showAiCopilotToggle = true,
+  isWorkspaceFocusMode,
+  onAddHomeTab,
+  onActivateHome,
+  onActivateSession,
+  onCloseHomeTab,
+  onCloseSessionTab,
+  onDragEnd,
+  onDragEnter,
+  onDragStart,
+  onOpenTabContext,
+  onOpenSettings,
+  onToggleAiCopilot,
+  onToggleWindowMaximize,
+  onToggleWorkspaceFocus,
+  orderedTabs,
+  hostNavigation
+}: TabBarProps) {
+  const visibleTabs = hostNavigation ? hostNavigation.activeEntries : orderedTabs
+  const focusModeLabel = isWorkspaceFocusMode ? t.exitWorkspaceFocusMode : t.enterWorkspaceFocusMode
+  const aiCopilotLabel = isAiCopilotOpen ? t.closeAiCopilot : t.openAiCopilot
+  const suppressTabClickRef = useRef(false)
+  const releaseSuppressedClick = () => {
+    window.setTimeout(() => {
+      suppressTabClickRef.current = false
+    }, 0)
+  }
+  const hoverTargetRef = useRef<string | null>(null)
+
+  const startPointerSort = usePointerSortFallback<string>({
+    onStart: (tabKey) => {
+      suppressTabClickRef.current = true
+      hoverTargetRef.current = null
+      onDragStart(tabKey)
+    },
+    onTarget: (_source, target) => {
+      hoverTargetRef.current = target.id
+    },
+    onDrop: (_source, _target) => {
+      const finalTarget = hoverTargetRef.current
+      if (finalTarget) {
+        onDragEnter(finalTarget)
+      }
+      onDragEnd()
+      releaseSuppressedClick()
+    },
+    onCancel: () => {
+      onDragEnd()
+      releaseSuppressedClick()
+    }
+  })
+
+  return (
+    <header
+      className="fs-tabbar"
+      data-tauri-drag-region="deep"
+      onDoubleClick={(event) => {
+        const target = event.target instanceof Element ? event.target : null
+        if (target?.closest('.fs-tab, .add-tab, .window-tools, .window-controls-decorator')) {
+          return
+        }
+        onToggleWindowMaximize()
+      }}
+    >
+      <div
+        className={`titlebar-brand ${homeBrandContent ? 'has-home-brand-content' : ''}`}
+        data-tauri-drag-region="deep"
+      >
+        <div className="window-controls-decorator" aria-hidden="true">
+          <span className="dot dot-close" />
+          <span className="dot dot-minimize" />
+          <span className="dot dot-maximize" />
+        </div>
+        {homeBrandContent ? (
+          <div className="titlebar-home-brand" aria-hidden="true">
+            {homeBrandContent}
+          </div>
+        ) : (
+          <strong>{t.appTitle}</strong>
+        )}
+      </div>
+      <div className="titlebar-tabarea">
+        <div className="fs-tabs" onWheel={handleHorizontalWheelScroll}>
+          {visibleTabs.map((entry, index) =>
+            entry.kind === 'local' ? (
+              <div
+                key={entry.key}
+                className={`fs-tab ${entry.tabKind === 'home' ? 'home-tab' : 'system-tab'} ${activeHomeTabId === entry.id ? 'active' : ''}`}
+                data-transterm-sort-id={entry.key}
+                data-transterm-sort-kind="tab"
+                onClick={() => {
+                  if (!suppressTabClickRef.current) onActivateHome(entry.id)
+                }}
+                onContextMenu={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  onActivateHome(entry.id)
+                  onOpenTabContext(event, {
+                    kind: 'local',
+                    id: entry.id,
+                    title: entry.title
+                  })
+                }}
+                onPointerDown={(event) => startPointerSort(event, entry.key)}
+                onMouseDown={preventMiddleClickAutoscroll}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    onActivateHome(entry.id)
+                  }
+                }}
+                onAuxClick={(event) => {
+                  if (event.button === MIDDLE_MOUSE_BUTTON) onCloseHomeTab(event, entry.id)
+                }}
+                role="button"
+                tabIndex={0}
+              >
+                <span>{index + 1}</span>
+                <strong>{entry.title}</strong>
+                <CloseButton
+                  aria-label={`${t.closeTab} ${entry.title}`}
+                  onClick={(event) => onCloseHomeTab(event, entry.id)}
+                  size="tab"
+                />
+              </div>
+            ) : (
+              <div
+                key={entry.key}
+                className={`fs-tab session-tab ${entry.tab.id === activeSessionTabId && !activeHomeTabId ? 'active' : ''}`}
+                data-transterm-sort-id={entry.key}
+                data-transterm-sort-kind="tab"
+                onClick={() => {
+                  if (!suppressTabClickRef.current) onActivateSession(entry.tab.id)
+                }}
+                onContextMenu={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  onActivateSession(entry.tab.id)
+                  onOpenTabContext(event, {
+                    kind: 'session',
+                    id: entry.tab.id,
+                    title: getSessionTabTitle(entry.tab),
+                    status: entry.tab.status,
+                    sessionType: entry.tab.sessionType
+                  })
+                }}
+                onPointerDown={(event) => startPointerSort(event, entry.key)}
+                onMouseDown={preventMiddleClickAutoscroll}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    onActivateSession(entry.tab.id)
+                  }
+                }}
+                onAuxClick={(event) => {
+                  if (event.button === MIDDLE_MOUSE_BUTTON) onCloseSessionTab(event, entry.tab.id)
+                }}
+                role="button"
+                tabIndex={0}
+              >
+                <span>{index + 1}</span>
+                <strong>{getSessionTabTitle(entry.tab)}</strong>
+                <StatusIndicator aria-hidden="true" status={tabStatusClass(entry.tab.status)} />
+                <CloseButton
+                  aria-label={`${t.closeTab} ${getSessionTabTitle(entry.tab)}`}
+                  onClick={(event) => onCloseSessionTab(event, entry.tab.id)}
+                  size="tab"
+                />
+              </div>
+            )
+          )}
+          <button aria-label={t.newTab} className="add-tab" type="button" onClick={onAddHomeTab}>
+            <AppIcon name="plus" size={16} />
+          </button>
+        </div>
+        <div className="window-tools">
+          <button
+            aria-label={focusModeLabel}
+            aria-pressed={isWorkspaceFocusMode}
+            className={`workspace-focus-toggle ${isWorkspaceFocusMode ? 'is-active' : ''}`}
+            title={focusModeLabel}
+            type="button"
+            onClick={onToggleWorkspaceFocus}
+          >
+            <span
+              aria-hidden="true"
+              className={`window-tool-icon window-tool-icon--${isWorkspaceFocusMode ? 'close-fullscreen' : 'open-in-full'}`}
+            />
+          </button>
+          {showAiCopilotToggle ? (
+            <button
+              aria-label={isAiCopilotAvailable ? aiCopilotLabel : t.aiCopilotUnavailable}
+              aria-pressed={isAiCopilotOpen}
+              className={`ai-copilot-toggle ${isAiCopilotOpen ? 'is-active' : ''}`}
+              disabled={!isAiCopilotAvailable}
+              title={isAiCopilotAvailable ? aiCopilotLabel : t.aiCopilotUnavailable}
+              type="button"
+              onClick={onToggleAiCopilot}
+            >
+              <AppIcon name="ai-assistant" size={18} />
+            </button>
+          ) : null}
+          <button aria-label={t.settings} title={t.settings} type="button" onClick={onOpenSettings}>
+            <span aria-hidden="true" className="window-tool-icon window-tool-icon--settings" />
+          </button>
+        </div>
+      </div>
+    </header>
+  )
+}

@@ -1,0 +1,149 @@
+.remote-directory-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--surface-panel);
+  color: var(--text-primary);
+}
+
+.remote-directory-tree-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 0 0 24px;
+  box-sizing: border-box;
+  padding-inline: 10px;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--surface-canvas);
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+:root[data-theme*='light'] .remote-directory-tree-header {
+  background: var(--surface-toolbar);
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .remote-directory-tree-header {
+  background: var(--surface-elevated);
+}
+
+.remote-directory-scroll-region {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+.remote-directory-tree {
+  height: 100%;
+  overflow: auto;
+  scrollbar-width: none;
+}
+.remote-directory-tree::-webkit-scrollbar {
+  display: none;
+}
+.remote-directory-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  box-sizing: border-box;
+  padding-inline-end: 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  cursor: pointer;
+}
+.remote-directory-row:hover {
+  background: var(--surface-hover);
+}
+.remote-directory-row.is-current {
+  background: var(--surface-active);
+}
+.remote-directory-row:focus-visible {
+  outline: 1px solid var(--focus-outline);
+  outline-offset: -1px;
+}
+.remote-directory-row > .app-icon {
+  color: var(--folder-accent);
+  flex-shrink: 0;
+}
+.remote-directory-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.remote-directory-expand,
+.remote-directory-locate {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.remote-directory-expand:hover,
+.remote-directory-locate:hover {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+.remote-directory-locate:focus-visible {
+  outline: 1px solid var(--focus-outline);
+}
+.remote-directory-loading {
+  width: 10px;
+  height: 10px;
+  margin-inline-start: auto;
+  border: 1px solid var(--border-light);
+  border-top-color: var(--text-secondary);
+  border-radius: 50%;
+  animation: remote-directory-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+.remote-directory-error {
+  display: flex;
+  gap: 6px;
+  padding: 4px 10px;
+  color: var(--status-danger);
+  font-size: 11px;
+}
+.remote-directory-error span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.remote-directory-error button {
+  border: 0;
+  padding: 0;
+  color: var(--text-primary);
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.remote-directory-unavailable {
+  padding: 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+@keyframes remote-directory-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .remote-directory-loading {
+    animation: none;
+  }
+}
+
+.remote-directory-locate-icon {
+  width: 14px;
+  height: 14px;
+  background: currentColor;
+  mask: url('../../assets/icons/navigation/locate.svg') center / contain no-repeat;
+  -webkit-mask: url('../../assets/icons/navigation/locate.svg') center / contain no-repeat;
+}

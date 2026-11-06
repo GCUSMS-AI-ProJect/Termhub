@@ -1,0 +1,315 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type {
+  TranstermDesktopApi,
+  SshCredentialsPromptRequest,
+  SshCredentialsInput,
+  SshHostVerificationRequest,
+  SshKeyboardInteractiveRequest,
+  SshInteractionRequest,
+  SshInteractionResponse,
+  SshKeyPassphrasePromptRequest
+} from '@transterm/core'
+import { t } from '../i18n'
+import {
+  createSshInteractionQueue,
+  enqueueSshInteraction,
+  getActiveSshInteraction,
+  removeSshInteraction
+} from './ssh-interaction-queue'
+
+export type UseSshInteractionsOptions = {
+  desktopApi?: TranstermDesktopApi
+  isMainWorkspaceWindow?: boolean
+  isConnectionFormWindow?: boolean
+  isConnectionFormOpen?: boolean
+  onHostTrustAccepted?(request: SshHostVerificationRequest): void
+  onError(scope: string, error: unknown): void
+}
+
+export type UseSshInteractionsResult = {
+  request: SshInteractionRequest | null
+  credentialsRequest: SshCredentialsPromptRequest | null
+  keyboardInteractiveRequest: SshKeyboardInteractiveRequest | null
+  hostVerificationRequest: SshHostVerificationRequest | null
+  keyPassphraseRequest: SshKeyPassphrasePromptRequest | null
+  errorMessage: string | null
+  isResolving: boolean
+  waitForSshInteractionListener(): Promise<void>
+  resolve(requestId: string, response: SshInteractionResponse): Promise<boolean>
+  cancelCredentials(): Promise<void>
+  submitCredentials(input: SshCredentialsInput): Promise<void>
+  cancelKeyboardInteractive(): Promise<void>
+  submitKeyboardInteractive(answers: string[]): Promise<void>
+  cancelKeyPassphrase(): Promise<void>
+  submitKeyPassphrase(input: { passphrase: string; savePassphrase: boolean }): Promise<void>
+  rejectHost(): Promise<void>
+  acceptHostOnce(): Promise<void>
+  acceptHostAndSave(): Promise<void>
+}
+
+function isStaleSshInteractionError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error)
+  return /SSH interaction (?:request is no longer pending|receiver is no longer available)/i.test(message)
+}
+
+export function useSshInteractions({
+  desktopApi,
+  isMainWorkspaceWindow = false,
+  isConnectionFormWindow = false,
+  isConnectionFormOpen = false,
+  onHostTrustAccepted,
+  onError
+}: UseSshInteractionsOptions): UseSshInteractionsResult {
+  const [queue, setQueue] = useState(createSshInteractionQueue)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [resolvingRequestId, setResolvingRequestId] = useState<string | null>(null)
+  const resolvingRequestIdsRef = useRef(new Set<string>())
+  const sshInteractionRegistrationRef = useRef<Promise<void>>(Promise.resolve())
+  const onErrorRef = useRef(onError)
+  onErrorRef.current = onError
+
+  useEffect(() => {
+    if (!desktopApi) {
+      sshInteractionRegistrationRef.current = Promise.resolve()
+      return
+    }
+
+    let active = true
+    let unsubscribe: (() => void) | null = null
+    const registration = desktopApi
+      .onSshInteraction((nextRequest) => {
+        // Connection tests are owned by the form that started them. Normal
+        // SSH sessions are owned by the main workspace. Every Tauri window
+        // receives the app-wide event, so filter here before a request can be
+        // resolved by the wrong renderer or become invisible in a child
+        // window.
+        const isConnectionTest = nextRequest.tabId.startsWith('connection-test-')
+        const canHandleRequest = isConnectionTest
+          ? isConnectionFormWindow || isConnectionFormOpen
+          : isMainWorkspaceWindow
+        if (!canHandleRequest) {
+          return
+        }
+
+        void desktopApi.showCurrentWindow().catch(() => undefined)
+        setQueue((current) => enqueueSshInteraction(current, nextRequest))
+        setErrorMessage(null)
+      })
+      .then((stopListening) => {
+        if (!active) {
+          stopListening()
+          return
+        }
+        unsubscribe = stopListening
+      })
+      .catch((error) => {
+        if (active) {
+          onErrorRef.current('注册 SSH 交互监听', error)
+          setErrorMessage(error instanceof Error ? error.message : String(error))
+        }
+        throw error
+      })
+    sshInteractionRegistrationRef.current = registration
+    // A renderer can exist without an active connection test. Avoid an
+    // unhandled rejection in that case while still letting a test that was
+    // waiting for registration receive the original error.
+    void registration.catch(() => undefined)
+
+    return () => {
+      active = false
+      void registration.then(
+        () => {
+          unsubscribe?.()
+        },
+        () => undefined
+      )
+    }
+  }, [desktopApi, isConnectionFormOpen, isConnectionFormWindow, isMainWorkspaceWindow])
+
+  const waitForSshInteractionListener = useCallback(async () => {
+    await sshInteractionRegistrationRef.current
+  }, [])
+
+  const resolve = useCallback(
+    async (requestId: string, response: SshInteractionResponse) => {
+      if (!desktopApi || resolvingRequestIdsRef.current.has(requestId)) {
+        return false
+      }
+
+      resolvingRequestIdsRef.current.add(requestId)
+      setResolvingRequestId(requestId)
+      try {
+        await desktopApi.resolveSshInteraction(requestId, response)
+        setQueue((current) => removeSshInteraction(current, requestId))
+        setErrorMessage(null)
+        return true
+      } catch (error) {
+        onError('响应 SSH 交互', error)
+        if (isStaleSshInteractionError(error)) {
+          // The backend removes timed-out requests so a late click must not
+          // leave an unusable MFA/host-key modal covering the workspace.
+          // Keep the parent connection error for retry diagnostics, but drop
+          // this stale request from the renderer queue immediately.
+          setQueue((current) => removeSshInteraction(current, requestId))
+          setErrorMessage(null)
+        } else {
+          setErrorMessage(error instanceof Error ? error.message : String(error))
+        }
+        return false
+      } finally {
+        resolvingRequestIdsRef.current.delete(requestId)
+        setResolvingRequestId((current) => (current === requestId ? null : current))
+      }
+    },
+    [desktopApi, onError]
+  )
+
+  const request = getActiveSshInteraction(queue)
+  useEffect(() => {
+    const requestId = request?.requestId
+    const expiresAt = request?.expiresAt
+    if (!requestId || typeof expiresAt !== 'number') {
+      return
+    }
+
+    const dismissExpiredRequest = () => {
+      // The backend owns the actual timeout and cleanup. This renderer-side
+      // guard prevents a stale dialog from covering the workspace while a
+      // late IPC response is still making its way back from Tauri.
+      setQueue((current) => removeSshInteraction(current, requestId))
+      setErrorMessage(null)
+      resolvingRequestIdsRef.current.delete(requestId)
+      setResolvingRequestId((current) => (current === requestId ? null : current))
+    }
+    const delay = Math.max(0, expiresAt - Date.now())
+    const timer = setTimeout(dismissExpiredRequest, delay)
+    return () => clearTimeout(timer)
+  }, [request?.expiresAt, request?.requestId])
+
+  const credentialsRequest = request?.kind === 'credentials' ? request : null
+  const keyboardInteractiveRequest = request?.kind === 'keyboard-interactive' ? request : null
+  const hostVerificationRequest = request?.kind === 'host-verification' ? request : null
+  const keyPassphraseRequest = request?.kind === 'key-passphrase' ? request : null
+
+  const cancelCredentials = useCallback(async () => {
+    if (!credentialsRequest) {
+      return
+    }
+
+    await resolve(credentialsRequest.requestId, {
+      kind: 'credentials',
+      canceled: true
+    })
+  }, [credentialsRequest, resolve])
+
+  const submitCredentials = useCallback(
+    async (input: SshCredentialsInput) => {
+      if (!credentialsRequest) {
+        return
+      }
+
+      const username = input.username.trim()
+      if (!username) {
+        setErrorMessage(t.sshAuthPromptUsernameRequired)
+        return
+      }
+      if (input.authType === 'privateKey' ? !input.privateKeyId : !input.password) {
+        setErrorMessage(input.authType === 'privateKey' ? t.privateKeyChooseImported : t.sshAuthPromptPasswordRequired)
+        return
+      }
+
+      await resolve(credentialsRequest.requestId, {
+        kind: 'credentials',
+        canceled: false,
+        ...input,
+        username
+      })
+    },
+    [credentialsRequest, resolve]
+  )
+
+  const cancelKeyPassphrase = useCallback(async () => {
+    if (!keyPassphraseRequest) return
+    await resolve(keyPassphraseRequest.requestId, { kind: 'key-passphrase', canceled: true })
+  }, [keyPassphraseRequest, resolve])
+
+  const submitKeyPassphrase = useCallback(
+    async ({ passphrase, savePassphrase }: { passphrase: string; savePassphrase: boolean }) => {
+      if (!keyPassphraseRequest) return
+      if (!passphrase) {
+        setErrorMessage(t.sshKeyPassphraseEmpty)
+        return
+      }
+      await resolve(keyPassphraseRequest.requestId, {
+        kind: 'key-passphrase',
+        canceled: false,
+        passphrase,
+        savePassphrase
+      })
+    },
+    [keyPassphraseRequest, resolve]
+  )
+
+  const resolveHostVerification = useCallback(
+    async (decision: 'accept-once' | 'accept-and-save' | 'cancel') => {
+      if (!hostVerificationRequest) {
+        return
+      }
+
+      const accepted = await resolve(hostVerificationRequest.requestId, {
+        kind: 'host-verification',
+        decision
+      })
+      if (accepted && decision === 'accept-and-save') {
+        onHostTrustAccepted?.(hostVerificationRequest)
+      }
+    },
+    [hostVerificationRequest, onHostTrustAccepted, resolve]
+  )
+
+  const cancelKeyboardInteractive = useCallback(async () => {
+    if (keyboardInteractiveRequest)
+      await resolve(keyboardInteractiveRequest.requestId, { kind: 'keyboard-interactive', canceled: true })
+  }, [keyboardInteractiveRequest, resolve])
+
+  const submitKeyboardInteractive = useCallback(
+    async (answers: string[]) => {
+      if (keyboardInteractiveRequest)
+        await resolve(keyboardInteractiveRequest.requestId, { kind: 'keyboard-interactive', canceled: false, answers })
+    },
+    [keyboardInteractiveRequest, resolve]
+  )
+
+  const rejectHost = useCallback(async () => {
+    await resolveHostVerification('cancel')
+  }, [resolveHostVerification])
+
+  const acceptHostOnce = useCallback(async () => {
+    await resolveHostVerification('accept-once')
+  }, [resolveHostVerification])
+
+  const acceptHostAndSave = useCallback(async () => {
+    await resolveHostVerification('accept-and-save')
+  }, [resolveHostVerification])
+
+  return {
+    request,
+    credentialsRequest,
+    keyboardInteractiveRequest,
+    hostVerificationRequest,
+    keyPassphraseRequest,
+    errorMessage,
+    isResolving: Boolean(request && resolvingRequestId === request.requestId),
+    waitForSshInteractionListener,
+    resolve,
+    cancelCredentials,
+    submitCredentials,
+    cancelKeyboardInteractive,
+    submitKeyboardInteractive,
+    cancelKeyPassphrase,
+    submitKeyPassphrase,
+    rejectHost,
+    acceptHostOnce,
+    acceptHostAndSave
+  }
+}

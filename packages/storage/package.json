@@ -1,0 +1,18 @@
+{
+  "name": "@transterm/storage",
+  "version": "2.3.1-beta.10",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@transterm/core": "2.3.1-beta.10"
+  }
+}

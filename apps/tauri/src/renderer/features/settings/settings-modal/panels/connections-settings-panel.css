@@ -1,0 +1,44 @@
+.settings-connection-defaults__group {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-connection-defaults__group + .settings-connection-defaults__group {
+  margin-top: 16px;
+}
+
+.settings-connection-defaults__group > h4 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
+  font-weight: 600;
+}
+
+.settings-connection-defaults__field {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+}
+
+.settings-connection-defaults__field > span {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.settings-connection-defaults__field input {
+  box-sizing: border-box;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--font-size-sm);
+}
+
+.settings-connection-defaults__field input:focus {
+  border-color: var(--focus-outline);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-focus-ring);
+}

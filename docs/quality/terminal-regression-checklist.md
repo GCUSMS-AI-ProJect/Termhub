@@ -1,0 +1,393 @@
+# Terminal Regression Checklist
+
+本文记录终端层最近一次“高流量输出 + 全屏 TUI”回归后，后续修改 `TerminalView`、SSH 会话流、终端尺寸同步时必须复测的最小清单。
+
+## 1. 目的
+
+终端层目前已经覆盖了几类彼此容易冲突的能力：
+
+- 普通 shell 输出
+- 大量连续流式输出
+- `\r` 单行重绘式进度条
+- `nano` / `vim` 这类全屏 TUI
+- 连接启动 transcript 的一次性回放
+- 终端内搜索、Web 链接识别、Unicode 11 字符宽度
+- 多标签页 keep-alive、xterm 6 buffer 滚动和窗口恢复后的重新绘制
+
+这些能力共用一套 `TerminalView` 写入链路，后续只要调整：
+
+- `terminal:data` 写入方式
+- transcript hydration / bootText 回放
+- `fitAddon` 行列计算
+- PTY resize / shell ready 时机
+- xterm addon 加载顺序或搜索 UI
+- 标签页隐藏/恢复时的 DOM、canvas、texture atlas 和滚动条生命周期
+
+都可能引入回归。
+
+## 2. 必测命令
+
+### 2.0 SSH shell 初始化回显（Refs #264）
+
+- 使用带语法高亮、长命令重绘的 bash/zsh 配置连接，确认登录 banner 和提示符正常显示，内部 `__tdcwd` / `TranstermReady` 脚本及截断的 ANSI 颜色参数不出现在终端或 transcript 中。
+- 在初始化期间输入命令，确认输入等待初始化完成后按顺序执行；正常输入、`cd` 目录跟随和 sudo/su 用户状态同步正常。
+- 回归覆盖累计回显超过 16 KiB、单包超限、UTF-8 多字节内容、跨包 ready marker（BEL / ST）、已显示与暂存提示符两条启动路径，以及 marker 缺失后的超时恢复。
+- 缓冲上限只限制保留的回显，不代表脚本已完成；达到上限后继续过滤，完成标记与现有超时负责结束初始化等待。
+- 完成标记后的自定义提示符（如 `➜ 12:23 root ~`）和跨包 ANSI 序列必须完整保留，不能因提示符未以 `$` / `#` / `%` / `>` 结尾而丢弃，也不能随内部回显一同裁剪。
+- SSH `Data` 与 `ExtendedData` 都经过初始化回显过滤；任一流收到完成标记和提示符后，都应仅释放一次排队的用户输入，之后正常 stderr 可见。
+- 超时是恢复终端输入的兜底：丢弃已暂存的内部回显，恢复后续输出；它不能保证隐藏在超时后才到达的脚本回显。确认慢设备仍可通过 Ctrl+C 中断，避免无限等待。
+
+### 2.1 nano
+
+```bash
+sudo nano /opt/docker/frpc/frpc.toml
+```
+
+通过标准：
+
+- `nano` 界面能正常出现
+- 底部快捷键栏完整可见
+- 输入、保存、退出正常
+- 不出现整屏黑底只剩光标块的情况
+
+### 2.2 vim
+
+```bash
+sudo vim /opt/docker/frpc/frpc.toml
+```
+
+通过标准：
+
+- `vim` 能正常进入和退出
+- 退出后 shell 能正常回到 prompt
+- 不出现终端响应串泄漏到 shell，例如：
+
+```txt
+2RR0;276;0c10;rgb:...
+-bash: 2RR0: 未找到命令
+```
+
+### 2.3 单行覆盖式进度条
+
+```bash
+for i in $(seq 1 200); do printf "\rInstalling package %03d/200 [%-50s]" "$i" "$(printf '%*s' $((i/4)) '' | tr ' ' '=')"; sleep 0.03; done; printf "\nDone\n"
+```
+
+通过标准：
+
+- 屏幕上只保留一条进度行不断更新
+- 最终只留下完整的 `Installing package 200/200 ...`
+- 下一行输出 `Done`
+- 不残留白条、阶梯条、控制序列、乱码
+
+### 2.4 真实高输出安装
+
+```bash
+sudo apt install --reinstall libreoffice clang llvm gimp inkscape ffmpeg python3-dev -y
+```
+
+通过标准：
+
+- 不黑屏
+- 不自动 reload
+- `apt/dpkg` 进度显示不残影
+- 命令结束后 prompt 正常
+
+### 2.5 多行进度条和窗口拖拽
+
+用下面命令模拟 3 行进度条同时刷新，然后在执行过程中拖拽窗口大小：
+
+```bash
+bash -c 'printf "\033[?7l\n\n\n"; trap "printf \"\033[?7h\n\"" EXIT; for i in $(seq 0 100); do cols=$(tput cols); width=$((cols - 18)); [ "$width" -lt 10 ] && width=10; printf "\033[3F"; for n in 1 2 3; do filled=$((width * i / 100)); empty=$((width - filled)); printf "\r\033[2KTask %d [%-*s] %3d%%\n" "$n" "$width" "$(printf "%${filled}s" | tr " " "#")" "$i"; done; sleep 0.04; done; printf "\033[?7h\nDone\n"'
+```
+
+通过标准：
+
+- 三条进度最终都到 `100%`
+- 进度条不会因为窗口变宽而贴到真实右边界
+- 拖拽窗口时不出现大片阶梯残影
+- 命令结束后，上下键翻 shell 历史不会把历史内容画到 prompt 上方
+
+### 2.6 连接启动信息
+
+重连一个 SSH tab，确认 prompt 上方还能看到类似：
+
+```txt
+连接主机...
+连接主机成功
+Linux ...
+Last login: ...
+```
+
+通过标准：
+
+- 启动 transcript 会显示
+- 但不会因为 transcript 回放破坏 `nano/vim`
+
+### 2.7 终端搜索、链接和宽字符
+
+在终端里输出一些可搜索内容、URL、宽字符和 Emoji：
+
+```bash
+printf 'transterm search Search\nhttps://example.com\nPowerline 字符 Emoji 😀\n'
+```
+
+通过标准：
+
+- `Ctrl+Shift+F`（macOS 也相同）打开终端内搜索框，不触发文件编辑器搜索。
+- `Ctrl+F` 原样交给当前 shell / 远程 CLI，不打开 transterm 搜索；重点验证 readline、Codex、OpenCode、Claude Code、Qwen Code、Kimi Code 等输入框。
+- 搜索支持上一条/下一条，`Aa` 能切换大小写，`.*` 能切换正则。
+- HTTP/HTTPS 链接悬停可识别，点击能打开链接。
+- 中文、Powerline 字符和 Emoji 不明显挤压或造成光标错位。
+- 粘贴长命令并回车后，终端内不残留白色选区；普通 selection 应保持半透明灰色。
+
+### 2.8 标签页、分屏和 TUI 恢复
+
+至少准备一个本地终端和一个 SSH 终端；在其中运行一个持续刷新或全屏 TUI（例如 Codex、OpenCode、Claude Code、Qwen Code、Kimi Code、`vim`），然后反复执行：
+
+- 在本地、SSH、分屏 pane 之间来回切换 20 次以上。
+- 切换后在普通 shell scrollback 中上滚、下滚、拖动 transterm 滚动条，再回到底部。
+- 在 alternate screen 中滚轮，确认由 TUI 的 mouse reporting / alternate-scroll 语义处理，不被 transterm 搜索或自绘滚动条截走。
+- 切换期间拖动窗口、改变分屏比例，再切回原标签页。
+
+通过标准：
+
+- 本地和 SSH 的终端内容、光标、选择区、scrollback 和 TUI 状态都保留，不出现黑屏、空白、元素缺行或只剩光标。
+- 切回后首次滚轮即可生效，滚动条 thumb 与 xterm 当前 buffer 位置一致，不依赖再次输出或再次点击终端。
+- Windows 本地 ConPTY 在切换和 resize 后不出现重复行、缺行或底部状态栏消失。
+- 普通滚轮、alternate-screen 滚轮和远程 mouse reporting 三种行为不会互相污染。
+- Windows：在侧栏、文件区和设置界面滚轮或触控板捏合时，整张应用页面始终保持 100%，不会出现放大镜式的页面缩放。
+- 将界面缩放从 80% 调到 200%，确认文件区、系统信息栏、设置页和弹窗共同缩放，弹窗仍在窗口内；重启后设置保留，并在多窗口间同步。
+- 调整界面缩放时确认终端内容字号保持不变；再使用终端自己的缩放操作，只改变终端字号且网格仍能正确适配。
+- Windows：在终端区域使用 `Ctrl+滚轮`、终端缩放快捷键时，只改变终端字号；普通滚轮仍滚动终端内容。
+
+## 3. 当前脆弱点
+
+当前实现里最容易回归的是 transcript hydration，也就是：
+
+- main 进程会维护一份 `terminalTranscript`
+- renderer 挂载终端时，可能用这份 transcript 把“连接主机... / Linux ... / Last login ...”补回屏幕
+
+这套机制的价值是保住启动阶段的欢迎信息，但它也有风险：
+
+- 如果回放时机过晚，可能把已经在运行的 `nano/vim` 终端重置掉
+- 如果回放内容里混入终端控制序列，可能污染 TUI 或 shell
+- 如果回放过于频繁，会重新引入大输出时的卡顿、闪烁或黑屏
+
+一句话理解：
+
+```txt
+hydration 是“启动体验补偿”，不是实时终端同步机制
+```
+
+所以后续改动必须坚持：
+
+- 实时流优先走 `terminal:data`
+- 实时 PTY 数据保持原始控制流，交给 xterm 解析；不要在 renderer 里统一改写 `\r` / `\n`。
+- transcript 只做低频、一次性、启动期补偿
+- 不要为了修欢迎信息去恢复高频 reset / 全量回放
+
+## 4. 2026-06 nano / 进度条修复结论
+
+这次回归反复出现了三类症状：
+
+- `nano` 打开后没有底部菜单，输入内容回车后消失。
+- bash 上下键翻历史记录时，历史内容被画到 prompt 上方或吃掉旧输出。
+- 多行进度条贴近右边界时，拖拽窗口会出现阶梯残影和历史污染。
+
+最终确认的修法如下。
+
+### 4.1 不要在 renderer 改写实时 PTY 控制流
+
+曾经为了修进度条，尝试在 `TerminalView` 里识别 `\r` 并手动转换为清行、上移、多行重绘序列。这个做法会破坏真实终端协议：
+
+- `nano/vim` 依赖原始光标移动和 alternate screen 控制序列。
+- bash/readline 依赖原始 `\r`、清行和终端列数来重绘当前输入行。
+- renderer 统一改写 `\r` / `\n` 会让全屏 TUI 和 shell 历史重绘互相污染。
+
+正确原则：
+
+```txt
+实时 PTY 数据保持原样 -> xterm 解析
+renderer 只做 transterm 固定文案本地化，不做控制序列修补
+```
+
+### 4.2 xterm cols 必须和后端 PTY cols 完全一致
+
+这次有一个非常容易误判的坑：
+
+```txt
+本地 xterm 用真实窗口宽度
+后端 PTY 上报一个更小的保守 cols
+```
+
+这个看起来能让进度条离右边界远一点，但会直接破坏 bash/readline：
+
+- 后端 shell 按较小 `cols` 计算换行和清行。
+- 前端 xterm 按较大 `cols` 渲染。
+- 上下键翻历史时，readline 发出的清行和光标移动会落到错误位置，表现为“吃上去”。
+
+正确修法是：本地 `terminal.resize(cols, rows)` 和后端 `pty.resize(cols, rows)` 必须使用同一个 `cols`。
+
+当前策略：
+
+- 平稳状态下，用 `fitAddon.proposeDimensions()` 的真实宽度计算 `cols`，本地和后端保持完全一致。
+- 保留少量 guard cols，避免输出紧贴最右边界。
+- 用户横向拖拽窗口时，临时冻结上一帧 `cols`，避免拖拽过程里连续改列数。
+- 横向拖拽停止后，再把真实宽度对应的 `cols` 一次性同步给本地 xterm 和后端 PTY。
+
+这样可以同时保证：
+
+- `nano/vim` 的菜单和状态栏不会错位。
+- bash/readline 上下键历史重绘不会吃旧内容。
+- 多行进度条不会在拖拽过程中连续重排出阶梯残影。
+- 拖拽结束后，普通表格命令能恢复使用真实可见宽度。
+
+### 4.3 行数保持动态，但保留 1 行安全余量
+
+列数可以按最小窗口稳定固定；行数不要硬编码。原因：
+
+- 文件面板高度可拖拽。
+- `nano/vim` 需要知道当前真实可用高度。
+- 行数固定会让全屏 TUI 的底部菜单和文件 dock 更容易互相挤压。
+
+当前策略是继续使用 `fitAddon.proposeDimensions()` 的行数，但减去 1 行安全余量，再同步给 xterm 和后端 PTY。
+
+### 4.4 不要重新启用 WebGL 作为默认渲染器
+
+WebGL 原本是为了高频输出性能引入的，但这次验证中它会放大渲染层问题，尤其是搜索高亮、selection、TUI 重绘和窗口 resize 混在一起时更难排查。
+
+当前策略：
+
+- 不默认加载 `@xterm/addon-webgl`。
+- 保持 xterm 默认渲染路径。
+- 先确保 PTY 控制流和尺寸同步正确，再考虑未来单独评估硬件加速。
+
+### 4.5 搜索高亮和普通 selection 必须分开
+
+终端搜索可以使用 SearchAddon decoration 做浅白高亮，但普通 selection 不能复用同一套浅白底色，否则粘贴长命令或搜索关闭后容易残留白块。
+
+当前策略：
+
+- SearchAddon decoration：浅白底、黑字，用于当前搜索命中。
+- xterm 普通 selection：半透明灰色。
+- 粘贴、键盘输入、远端输出时主动清理临时 selection / decoration。
+
+## 5. 修改注意事项
+
+后续如果改这些点，必须跑完整清单：
+
+- `terminal-view.tsx` 内的 `terminal.write` / flush / transcript hydration
+- `apps/tauri/src-tauri/src/services/workspace/state.rs` 内的终端 transcript / `terminal:state`
+- `apps/tauri/src-tauri/src/sessions/ssh/` 内的 shell transcript 维护
+- `fitAddon` 尺寸同步和 PTY resize
+- `TerminalView` 的 selection/search decoration 清理逻辑
+
+尤其不要轻易把下面两类逻辑重新混在一起：
+
+- “全屏 TUI 稳定性”
+- “启动 transcript 回放”
+
+这两者一旦耦合，最容易出现：
+
+- `nano` 黑屏
+- `vim` 退出后 shell 被污染
+- `apt` 进度条残影
+- bash/readline 上下键历史记录“吃上去”
+
+## 鼠标选区与特殊字形
+
+修改选区适配器时，运行 `apps/tauri/tests/browser/terminal-selection-glyphs.mjs`。
+该测试加载实际字体，覆盖 14/24px 字号、1×/2×缩放，以及星号、线框、空心方框、复选框和块状字符。
+必须通过真实鼠标拖选检查按住鼠标和松开鼠标两种状态，不能仅调用 `terminal.select()`：
+xterm DOM renderer 在拖选过程中直接替换行节点，直到松开鼠标才发出 `onSelectionChange`，也不保证发出 `onRender`。
+
+- 选区背景由 selection layer 绘制，选中的文字 span 不得重新覆盖不透明背景，以免遮住相邻字形伸出单元格的部分。
+- 选区前景色、局部选择和清除选择后的块状字符颜色必须正确。
+- DOM 监听不得产生持续刷新循环；适配器销毁后必须断开监听。
+- 默认使用仓库中的 JetBrains Mono；通过 `TERMINAL_TEST_FONT_PATH=/absolute/path/font.ttf` 检查其他本地字体。
+- 使用 `PLAYWRIGHT_ENGINE=webkit` 检查 macOS WebKit，并以 Chromium 作对照。
+  如果工具包未在仓库安装，可分别通过 `PLAYWRIGHT_MODULE_PATH` 和 `SHARP_MODULE_PATH` 指定其本地包路径。
+
+2026-10-06 本地检查：JetBrains Mono、Cascadia Code 2407.24 均通过 WebKit 和 Chromium 的字号/缩放矩阵；
+macOS `SFNSMono.ttf` 通过 WebKit 对照检查。修复版本在采样区域没有丢失选中前可见的深色字形像素。
+这项检查不替代 Windows 实机 WebView2 或用户截图中原始程序的验证。
+
+2026-10-08 beta.8 补充：鼠标选区与程序自身的 ANSI 蓝底/反显必须分开验证。
+实际字体栈包含 `Noto Sans SC`，它回退的部分符号宽于一格；xterm DOM 的负字距只缩小 advance，
+不会缩小字形本身，后一个背景 span 仍会遮住方框右边。此前仅用 SF Mono/Menlo 回退并比较鼠标
+选中前后的像素，漏掉了这条路径。
+
+运行 `apps/tauri/tests/browser/terminal-symbol-glyphs.mjs`，加载真实 JetBrains Mono 和 Noto Sans SC，
+启用与应用一致的 Unicode 11。无修复对照必须在 ANSI 背景下复现丢失字形像素；修复后同时覆盖
+程序蓝底、反显和真实鼠标拖选，检查过宽符号完整适配 buffer 单元格，且文字内容、清除选区、
+适配器销毁和 DOM 监听稳定性不回退。通过 `TERMINAL_TEST_FONT_PATH` 复查 Cascadia Code 等字体。
+
+字体矩阵使用同一字体的常规和粗体，不能把 Cascadia 常规体与 JetBrains 粗体混用。
+比较选中前后笔画时，排除背景颜色导致的抗锯齿变化，允许一 CSS 像素内的邻近笔画，
+但无修复对照仍必须复现真正被背景覆盖的符号边缘，不能仅检查字体加载成功。
+
+运行 `bundled-fonts.mjs` 检查生产 CSS 中所有字体可离线解码、缺失字体回退和系统字体检测。
+运行 `terminal-font-loading.mjs` 检查晚加载、导入事件、切换已有终端字体后的网格，以及销毁时取消回调。
+
+运行 `terminal-horizontal-rules.mjs` 检查 `─`、`━`、`═`：100%/125%/150%/200% 缩放和
+14/24px 字号下，横线逐列笔画覆盖必须一致，不能仅检查没有完全空白的断点。覆盖独立 ANSI
+spans、合并文本、特殊符号/CJK/组合字符混排、部分选区前景与清除、绘制器销毁。
+横线复用块字符的字符格位图，修改时同时重跑上面的符号遮挡、鼠标拖选和块字符颜色回归。
+
+运行 `terminal-box-drawing.mjs` 检查整个 U+2500–U+257F 线框区。JetBrains Mono、Cascadia
+各覆盖 12/13/14/24px 字号与 100%/125%/150%/200% DPI，验证轻线、粗线、双线、圆角
+表格的连续性，双线交叉处保留 Unicode 定义的通道，虚线保留有意的间隔。
+同时检查 CJK/组合字符列宽、部分选区、反显、备用 buffer、字号/尺寸变化、销毁和空闲收敛。
+几何回归由 `terminal-box-drawing.test.mjs` 纳入 renderer 门禁。
+
+原生 transterm Dev 本地终端可运行 `node apps/tauri/tests/fixtures/terminal-box-drawing.mjs`
+（从仓库根目录运行，或使用文件绝对路径）。该程序仅输出 QA 表格/ANSI/特殊符号，窗口改变
+尺寸时重绘，`Ctrl+C` 结束。通过真实鼠标拖选、终端字号与窗口大小变化复查，不能只看浏览器。
+非整数 DPI 下细线至少占一 CSS 像素，再取整到设备像素，避免小字号变成不足一 CSS 像素的发丝线。
+
+2026-10-13：Windows 11 开发版 WebView2 原生本地 ConPTY 验证中文表格、单双/粗线、圆角、
+ANSI 背景、反显、块字符和鼠标拖选，以及默认字号与字号变化；浏览器像素矩阵和持续重绘通过。
+Windows 10、macOS、Linux 原生环境仍需分别复查；本机未安装 WebKit 测试引擎。
+
+### 特殊符号比例（2026-10-15）
+
+上一版防遮挡把字体 advance 当作笔画宽度，并只做横向缩放；因此 `⚠️` 等单列宽符号
+变瘦，字体留白较大的 `•` 也可能被误缩。现在只按实际笔画边界判断，优先平移越界笔画，
+确实宽于字符格时才等比缩小，不修改 Unicode 11 列宽、变体选择符或复制内容。
+单列超宽符号可能整体变小，但三角形、圆点和方框保持原有比例。
+
+运行 `apps/tauri/tests/browser/terminal-symbol-proportions.mjs`：真实字体覆盖等宽主字体与
+CJK 主字体、常规/粗体、14/24px 和 100%/125%/200% DPI，检查 `⚠️`、文本变体、`•`、
+`✅❌`、方框、参照标记和相邻符号。比较适配前后像素比例，验证等比变换、放得下的笔画
+不缩小、后续文字列位置和原始复制文本；旧实现会在等比断言处失败。
+
+同时重跑 `terminal-symbol-glyphs.mjs`，其像素检查包含彩色字形，覆盖程序背景、反显及
+真实鼠标拖选。Chromium/WebKit 的比例矩阵共 48 组通过；防遮挡矩阵通过。
+这些检查未替代 Windows 11 原生 WebView2 字体回退验证。
+
+### 特殊符号列宽、选区与尺寸刷新（2026-10-16）
+
+显示槽改为严格等于 buffer 列宽：fallback 字体的实际 advance 与 xterm 重复字形测量
+不同，原先会把同一行后续的表格线整体推偏，缩小字号后更明显。`✻`、`※` 等普通符号
+继续占单列，不因为字体笔画宽而改成双列。双列 emoji 的笔画绘制在选区背景之上，修掉
+从延续格开始选择时右半边被盖住的情况。
+
+`terminal-symbol-proportions.mjs` 的断言行数从 9 扩到 18，逐行断言实际占用列宽等于
+Unicode 列宽；行级“整体墨迹等比”断言只对单一字素成立，多字素行（如 `⚠️•`、
+`🇨🇳🇺🇸`）中每个字形在各自槽位内独立缩放，整行没有统一缩放因子。
+
+尺寸变化改为像素级刷新，覆盖拖动终端区域宽度、拖动窗口和缩放窗口；稳定后同步 PTY，
+不再等待输出安静或 shell 提示符，避免持续输出的 TUI 收不到新尺寸。
+
+新增 `terminal-symbol-tables.mjs`（预排版表格的 buffer 列、屏幕坐标与复制文本三层断言）
+和 `terminal-resize-repaint.mjs`。Chromium 与 WebKit 的 8 个脚本共 16 次运行全部通过；
+Windows 11 WebView2 的原生复核仍待完成，细节和未验证项见
+[终端符号表格、选区与尺寸刷新回归](terminal-symbol-tables.md)。
+
+## 性能与长期运行
+
+- `tests/browser/terminal-redraw-load.mjs`：持续 60 秒 ANSI/CJK/符号重绘及普通/备用缓冲区切换；
+  检查输出排空、空闲收敛、画布/DOM 和布局读取有界。时间统计只作诊断，不作为跨机器性能门槛。
+- 原生 CC 长期运行仍需实测；`renderer:performance` 的 `event-loop-gap` WARN 表示恢复后检测到
+  的计时器间隔，不能独立证明忙循环，也不能捕获永久阻塞。

@@ -1,0 +1,52 @@
+.file-manager .file-tab-actions {
+  align-items: center;
+}
+
+.file-manager .file-tabs .file-tab-actions .file-pane-mode-select.dropdown-select-trigger {
+  width: auto;
+  min-width: 0;
+  flex: 0 0 auto;
+  justify-content: flex-start;
+  max-width: 160px;
+  box-sizing: border-box;
+  height: 22px;
+  min-height: 22px;
+  max-height: 22px;
+  align-self: center;
+  padding: 0 8px;
+  gap: 4px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--surface-input);
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  box-shadow: none;
+}
+
+.file-manager .file-tabs .file-tab-actions .file-pane-mode-select.dropdown-select-trigger:hover,
+.file-manager .file-tabs .file-tab-actions .file-pane-mode-select.dropdown-select-trigger:focus-visible,
+.file-manager .file-tabs .file-tab-actions .file-pane-mode-select.dropdown-select-trigger[aria-expanded='true'] {
+  border-color: var(--focus-outline);
+  color: var(--accent-secondary);
+  background: var(--surface-input);
+  box-shadow: none;
+}
+
+.file-pane-mode-select .dropdown-select-value {
+  flex: 0 1 auto;
+}
+
+.file-pane-mode-select .dropdown-select-arrow {
+  color: inherit;
+}
+
+.file-pane-mode-error {
+  color: var(--status-danger);
+  font-size: var(--font-size-xs);
+}
+
+.file-manager .file-tabs .file-tab-actions button[aria-pressed],
+.file-manager .file-tabs .file-tab-actions button[aria-pressed]:hover,
+.file-manager .file-tabs .file-tab-actions button[aria-pressed].active {
+  background: var(--surface-input);
+}

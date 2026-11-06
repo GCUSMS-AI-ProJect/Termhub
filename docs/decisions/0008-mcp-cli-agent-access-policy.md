@@ -1,0 +1,103 @@
+# ADR-0008: MCP、CLI 与 Agent 共享访问策略和凭据边界
+
+## 状态
+
+Accepted（2026-08-29）
+
+## 背景
+
+transterm 同时提供桌面 GUI、本地 MCP 子进程和一次性 CLI。外部 Agent 需要访问已经保存的连接，但不能因为调用方是 AI 就获得所有主机、密码或可见终端输入能力。
+
+并行调用还会带来两个独立问题：一次性 CLI 会为每个调用产生一个进程；同一 profile 的多个 open 请求可能重复创建 tab、SSH worker 和凭据弹窗。连接凭据输入也必须能在用户完成主窗口交互后把最终结果交回原始调用。
+
+## 决策
+
+### 1. 访问范围和操作等级由桌面端全局策略决定
+
+策略持久化在 `UiPreferences.mcpAgent`，只包含非敏感数据：
+
+- `connectionScope`：全部已保存连接，或明确选中的已保存连接。
+- `allowedProfileIds`：指定连接模式下允许访问的 profile ID。
+- `operationPolicy`：只读、基础安全操作或完全访问。
+
+设置页将这两个维度展示为两张独立策略卡片：第一张选择 MCP / CLI 共用执行权限并提供能力对照，第二张选择“所有连接 / 指定连接”并维护白名单。连接自身的协议能力和 transterm 安全校验继续作为更高优先级的硬上限，不新增每条连接的 MCP 专属权限。
+
+旧版本的 `active-session` 和 `default-connection` 只作为读取时的迁移输入：前者转成空白的指定连接白名单并保持拒绝访问，后者把旧的 `defaultProfileId` 转成单个允许的 profile；迁移后的模型不再序列化 `defaultProfileId`。
+
+策略在 desktop bridge 的 action route 入口执行，而不是只在 renderer 隐藏按钮。MCP、一次性 CLI 和 CLI JSONL 都使用同一个策略评估器；profile 删除后授权 ID 自动清理，旧配置缺失字段时采用 fail-closed 默认值。
+
+完全访问只跳过逐次操作审批（包括 sudo/su 操作确认）；不能绕过连接范围、session revision、路径校验、凭据边界或 terminal 输入限制。sudo/su 密码仍可能需要输入。
+
+### 2. 三种调用入口具有明确且不互相扩大权限的语义
+
+| 来源           | 入口                      | 审批语义                                                                                      | 备注                                                                                              |
+| -------------- | ------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| MCP            | `transterm mcp`           | 基础安全操作中的变更、破坏性/提权命令、会话变更、文件/传输变更、隧道和 sudo/su 进入主窗口审批 | 查询和 Copilot 判定的普通安全命令自动执行，遵循 MCP JSON-RPC 和 progress 通知                     |
+| 手动一次性 CLI | `transterm cli <command>` | 与 MCP 使用同一 transterm 主窗口审批                                                          | 仅供用户手动调试和 shell 脚本；外部 Agent 不按请求使用，查询和 Copilot 判定的普通安全命令自动执行 |
+| CLI JSONL      | `transterm cli --jsonl`   | 基础安全操作中的变更、破坏性/提权命令、会话变更、文件/传输变更和隧道进入同一桌面审批队列      | 不能通过请求字段关闭审批；一个进程可处理多个 JSONL 请求                                           |
+
+调用来源只用于审计和选择正确的输出协议，不用于绕过连接范围。CLI JSONL 不区分具体客户端；所有外部 CLI/MCP 客户端共享同一份 transterm 全局策略。
+
+### 3. SSH 登录凭据归 transterm 主窗口所有
+
+`ConnectionOperation` 只保存 operation ID、profile ID、tab ID 和非敏感状态，并通过 profile-scoped single-flight 去重。MCP/CLI JSONL 的 `open_connection` 默认等待连接就绪，也可以返回 operation ID 后通过 `wait_for_connection` 继续等待。
+
+当 SSH 登录密码、私钥口令或 keyboard-interactive 需要用户输入时：
+
+1. SSH worker 通过现有 `ssh:interaction` 事件请求主窗口输入。
+2. desktop bridge 向原始 CLI/MCP/CLI JSONL 调用发送脱敏 progress。
+3. 用户完成或取消输入后，原始调用收到最终 Connected 或稳定错误码。
+
+SSH 登录密码不新增到 MCP/CLI 的公开参数、stdout、stderr、结果或日志。普通 exec 仍不接管 MFA、确认、安装器、`passwd` 或 REPL 等通用交互输入。
+
+sudo/su 是普通 exec 的受控特例：保存的凭据或主窗口安全 prompt 仍由 Rust 使用；确需一次性 CLI 脚本输入时，优先使用 `--sudo-password-stdin` 或 `--su-password-stdin`，而不是把密码放进 argv。
+
+### 4. CLI JSONL 解决重复 CLI 进程问题
+
+桌面 GUI 进程负责持有连接、会话、秘密和审批队列。`transterm cli --jsonl` 是一个不启动 GUI 的常驻 JSONL 进程，通过同一个本地 authenticated desktop bridge 处理多个 request ID；每个请求拥有独立 progress 和最终结果，输出按行原子化写出。CLI JSONL 请求可通过 `cancel_request` 按 request ID 取消；如果对应操作已经进入 SSH exec，则在原通道上尽力发送 INT、TERM、KILL 并关闭通道，不在新通道上重跑命令，也不回滚桌面端已经接受的其他操作。
+
+一次性 CLI 保留用于 shell 脚本和手动调试，不承诺“零进程”。外部 Agent 的接入契约固定使用常驻 MCP 或 `transterm cli --jsonl`，不得为每个动作重新 spawn 一次性 CLI；设置页和客户端接入说明必须把一次性 CLI 标为手动/脚本入口。
+
+无论外部客户端是否错误地并行启动多个一次性 CLI，桌面端仍对同一 profile 的连接建立做 single-flight：只复用一个 connection operation、tab、worker 和凭据 prompt。该去重不能消除已经启动的 CLI 进程本身。
+
+### 5. 本地 bridge 的安全边界
+
+- 仅监听 `127.0.0.1` 随机端口，并使用每次桌面启动生成的 owner-only runtime descriptor 和 token。
+- token 使用常时比较；非 loopback peer、非法 descriptor、超大消息和超出并发上限的请求直接拒绝。
+- bridge 结果、CLI JSONL progress、CLI 输出和 workspace snapshot 不包含 profile secret、私钥、密码或完整 terminal transcript。
+- CLI JSONL 请求只能调用已注册 action；参数仍经过严格 schema、长度和路径校验。
+- CLI JSONL 请求的 `requiresApproval` 仅为请求字段，桌面端收到请求时始终强制使用审批策略；`cancel_request` 影响请求等待/输出，并对正在执行的 SSH exec 触发有界的 best-effort 终止清理，但不保证远程进程已经退出，也不撤销桌面端已经接受的其他操作。
+
+### 6. 长命令使用独立的后台命令会话
+
+MCP/CLI 不把部署、镜像构建、迁移或 `docker compose` 这类长任务塞进一个有界的同步 tool call。`start_remote_command` 只在一个 SSH exec channel 上接受一次命令并返回 `commandId`；`read_remote_command` 使用递增 byte offset 读取同一命令的输出增量，`terminate_remote_command` 在原 channel 上按 INT → TERM → KILL → close 做有界的 best-effort 清理，`close_remote_command` 在调用方收尾后释放 transterm 保留的输出。连接重建不会把已接受的命令重新提交到新 channel。
+
+后台命令只保留有界输出（最多 256 KiB，单次读取最多 64 KiB），最长运行 6 小时；它不提供通用 PTY 输入，也不支持把新提供的 sudo/su 密码保存到 profile。已保存凭据或本次调用明确提供的特权凭据仍可用于启动命令，MFA、安装器确认、REPL 等通用交互继续返回 `REMOTE_INTERACTIVE_INPUT_REQUIRED`。
+
+## 影响
+
+### 正面影响
+
+- 用户可以按连接和操作等级限制所有 MCP/CLI/CLI JSONL 客户端，而不需要为每个客户端维护一套权限。
+- 缺少 SSH 登录密码时，原始调用不会在弹框后丢失；用户输入后能收到最终结果。
+- AI 并行操作可以复用 CLI JSONL 和同一 profile 的连接任务，减少重复 GUI 启动与重复凭据交互。
+- 旧的 MCP JSON-RPC 和一次性 CLI 保持兼容；CLI JSONL 作为同一 CLI 的显式持久模式提供。
+- 长时间远程任务不再受单次 MCP bridge 请求的 120 秒执行边界影响；调用方拥有稳定的 command ID、增量输出和显式终止语义。
+
+### 限制与非目标
+
+- 手动一次性 CLI 本身仍是一个进程；要让外部 Agent 复用进程必须使用 `transterm cli --jsonl` 或 MCP。
+- transterm 不通过后台 bridge 自动回答 MFA、验证码、安装器确认或任意终端输入。
+- CLI JSONL 取消是 best-effort 的请求生命周期与 SSH exec 清理控制，不是远程命令回滚机制；transterm 不声称 INT/TERM/KILL 已让远程进程退出。
+- 后台命令的 command ID 只绑定创建它的 tab；读/终止/关闭必须携带相同 tab ID，重连只影响原通道的存活，不会触发隐式重跑。
+- macOS 打包产物的 application type、Dock 图标行为以及真实 SSH/FTP/网络设备连接仍需要目标环境人工验收。
+
+## 实现位置
+
+- `packages/core/src/index.ts`：共享的 MCP/CLI 偏好类型。
+- `apps/tauri/src-tauri/src/commands/mod.rs`：偏好规范化、迁移和设置命令。
+- `apps/tauri/src-tauri/src/services/mcp/mod.rs`：MCP、CLI、CLI JSONL 协议、bridge route 和策略评估。
+- `apps/tauri/src-tauri/src/services/mcp/background.rs`：后台 SSH exec channel、增量输出缓冲、取消/终止和 command ID registry。
+- `apps/tauri/src-tauri/src/services/connection_operations.rs`：连接 single-flight 与可等待状态。
+- `apps/tauri/src-tauri/src/main.rs`：GUI、MCP、CLI JSONL 和一次性 CLI 入口分发。
+- `apps/tauri/src/renderer/features/settings/settings-modal.tsx`：策略和 Agent 设置界面。

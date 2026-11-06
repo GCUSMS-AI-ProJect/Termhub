@@ -1,0 +1,158 @@
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import { DEFAULT_UI_ZOOM_PERCENT } from '@transterm/core'
+import { App } from './app'
+import { ErrorBoundary } from './features/common/error-boundary'
+import { createTauriApi } from '../bridge/tauri-api'
+import { getCurrentWindow } from '@tauri-apps/api/window'
+import { isTauri } from '@tauri-apps/api/core'
+import { getLocale, setLocale, t } from './i18n'
+import { resolveRendererPlatform } from './lib/renderer-platform'
+import { applyThemeVariables, type ThemeMode } from './app/theme-config'
+import { applyUiZoomPercent } from './app/ui-zoom'
+import { MainWindowReveal } from './lib/main-window-reveal'
+import './styles/index.css'
+import { installRendererErrorLogging, reportRendererError } from './lib/renderer-error-log'
+import { installRendererPerformanceLogging } from './lib/renderer-performance-log'
+
+const removeErrorLogging = installRendererErrorLogging()
+if (import.meta.hot) import.meta.hot.dispose(removeErrorLogging)
+const removePerformanceLogging = installRendererPerformanceLogging()
+if (import.meta.hot) import.meta.hot.dispose(removePerformanceLogging)
+
+const initialWindowMode = new URLSearchParams(window.location.search).get('window') ?? 'main'
+// Keep renderer-only chrome adjustments scoped to the Tauri window model.
+// macOS Overlay uses a different native title-bar baseline than Electron's
+// hiddenInset, even when both apps render the same React title bar.
+const isDesktopRuntime = isTauri()
+document.documentElement.dataset.runtime = isDesktopRuntime ? 'tauri' : 'browser'
+document.documentElement.classList.toggle('tauri-standalone-window', isDesktopRuntime && initialWindowMode !== 'main')
+
+const currentWindow = isDesktopRuntime ? getCurrentWindow() : null
+const syncWindowFocusState = (focused: boolean) => {
+  document.documentElement.dataset.windowFocused = focused ? 'true' : 'false'
+}
+
+// DOM focus is not the same as native NSWindow focus. Keep the native state on
+// <html> so platform theme skins can turn off glass when the window is idle.
+document.documentElement.dataset.windowFocused = 'true'
+void currentWindow
+  ?.isFocused()
+  .then(syncWindowFocusState)
+  .catch(() => undefined)
+void currentWindow?.onFocusChanged(({ payload }) => syncWindowFocusState(payload)).catch(() => undefined)
+
+const interactiveWindowSelector = [
+  'button',
+  'input',
+  'textarea',
+  'select',
+  'a',
+  '[role="button"]',
+  '[role="menuitem"]',
+  '[contenteditable="true"]',
+  '[data-no-drag]',
+  '.no-drag',
+  '.fs-tab',
+  '.add-tab',
+  '.window-tools',
+  '.window-controls-decorator'
+].join(',')
+
+// Start a native drag only from an explicitly marked, non-interactive area.
+// The old ancestor walk treated large standalone containers as deep drag
+// regions on Windows and could consume clicks meant for form controls.
+const handleWindowMouseDown = (e: MouseEvent) => {
+  if (e.button !== 0) return
+  const target = e.target instanceof Element ? e.target : null
+  if (!target || target.closest(interactiveWindowSelector)) return
+  if (!target.closest('[data-tauri-drag-region]')) return
+
+  void currentWindow?.startDragging().catch((err) => console.error('Failed to start window dragging:', err))
+}
+
+window.addEventListener('mousedown', handleWindowMouseDown, true)
+
+const root = ReactDOM.createRoot(document.getElementById('root')!)
+const renderRoot = (content: React.ReactNode) => {
+  root.render(
+    <React.StrictMode>
+      {isDesktopRuntime && initialWindowMode === 'main' && <MainWindowReveal />}
+      {content}
+    </React.StrictMode>
+  )
+}
+
+void (isDesktopRuntime ? createTauriApi() : Promise.resolve(undefined))
+  .then((api) => {
+    // Runtime metadata is synchronous in the shared desktop contract. Mount
+    // only after native metadata resolves so first-read consumers never see
+    // placeholder version, architecture, or platform fields.
+    window.transterm = api
+    document.documentElement.dataset.platform = resolveRendererPlatform(api?.platform ?? 'browser')
+    if (api?.platform === 'linux') {
+      document.documentElement.dataset.linuxWindowCorners = api.linuxWindowCornerStyle ?? 'square'
+    }
+
+    // Read durable UI preferences before mounting React. App state is then
+    // initialized from the saved values instead of briefly using defaults and
+    // writing those defaults back over the persisted file.
+    void (api?.getUiPreferences() ?? Promise.resolve(undefined))
+      .catch((error: unknown) => {
+        console.warn('Failed to load UI preferences:', error)
+        return undefined
+      })
+      .then(async (initialUiPreferences) => {
+        const searchParams = new URLSearchParams(window.location.search)
+        const queryTheme = searchParams.get('theme')
+        const isThemeMode = (val: unknown): val is ThemeMode =>
+          val === 'transterm-dark' ||
+          val === 'transterm-light' ||
+          val === 'codex-dark' ||
+          val === 'codex-light' ||
+          val === 'default-dark' ||
+          val === 'default-light'
+
+        const initialTheme: ThemeMode = isThemeMode(queryTheme)
+          ? queryTheme
+          : initialUiPreferences && isThemeMode(initialUiPreferences.theme)
+            ? initialUiPreferences.theme
+            : 'transterm-dark'
+        const queryLocale = searchParams.get('locale')
+        const initialLocale =
+          queryLocale === 'enUS' || queryLocale === 'zhCN'
+            ? queryLocale
+            : initialUiPreferences?.locale === 'enUS' || initialUiPreferences?.locale === 'zhCN'
+              ? initialUiPreferences.locale
+              : getLocale()
+
+        // Apply the loaded values before the first React render so CSS and the
+        // proxy-backed translation table agree with App's initial state.
+        applyThemeVariables(initialTheme, initialUiPreferences?.themeConfig)
+        await applyUiZoomPercent(initialUiPreferences?.uiZoomPercent ?? DEFAULT_UI_ZOOM_PERCENT)
+        setLocale(initialLocale)
+
+        renderRoot(
+          <ErrorBoundary>
+            <App initialUiPreferences={initialUiPreferences} />
+          </ErrorBoundary>
+        )
+      })
+      .catch((error: unknown) => {
+        reportRendererError('bootstrap', error)
+        console.error('Failed to initialize the renderer:', error)
+        renderRoot(
+          <div role="alert" className="app-bootstrap-error">
+            {t.runtimeInitFailed}
+          </div>
+        )
+      })
+  })
+  .catch((error: unknown) => {
+    console.error('Failed to initialize the Tauri desktop bridge:', error)
+    renderRoot(
+      <div role="alert" className="app-bootstrap-error">
+        {t.runtimeInitFailed}
+      </div>
+    )
+  })

@@ -1,0 +1,296 @@
+/// Buffered output produced while injecting the internal CWD hook.
+///
+/// A POSIX PTY is allowed to split the command echo, the generated OSC marker
+/// and the replacement prompt across packets. Do not release the buffer as
+/// soon as the marker is observed: doing so leaks the tail of a long setup
+/// command after `sudo -i` on Debian/bash.
+struct ShellSetupEchoSuppression {
+    buffer: String,
+    started_at: Instant,
+    visible_prefix: Option<String>,
+    marker_seen_at: Option<Instant>,
+    preserve_visible_prefix: bool,
+    release_replacement_prompt: bool,
+    fallback_visible: Option<String>,
+}
+
+impl ShellSetupEchoSuppression {
+    fn new(preserve_visible_prefix: bool) -> Self {
+        Self::with_prompt_policy(preserve_visible_prefix, true)
+    }
+
+    /// Build suppression for a setup command whose original prompt is already
+    /// visible in the terminal. The shell redraws that prompt after the hook
+    /// runs, so releasing the redraw would show the same prompt twice.
+    fn without_replacement_prompt() -> Self {
+        Self::with_prompt_policy(false, false)
+    }
+
+    fn with_prompt_policy(preserve_visible_prefix: bool, release_replacement_prompt: bool) -> Self {
+        Self {
+            buffer: String::new(),
+            started_at: Instant::now(),
+            visible_prefix: None,
+            marker_seen_at: None,
+            preserve_visible_prefix,
+            release_replacement_prompt,
+            fallback_visible: None,
+        }
+    }
+
+    fn with_fallback(fallback_visible: String) -> Self {
+        let mut state = Self::new(false);
+        state.fallback_visible = Some(fallback_visible);
+        state
+    }
+}
+
+const SHELL_SETUP_SETTLE_DELAY: Duration = Duration::from_millis(200);
+// The setup command is sent through the PTY and its echo/OSC response can be
+// delayed by a slow embedded SSH server. Keep the fail-open window long enough
+// not to release user input back into an unfinished line-editor command.
+const SHELL_SETUP_TIMEOUT: Duration = Duration::from_secs(5);
+const SHELL_SETUP_PROMPT_TIMEOUT: Duration = Duration::from_secs(3);
+const MAX_SHELL_SETUP_BUFFER_BYTES: usize = 16 * 1024;
+
+fn shell_setup_release_deadline(pending: &Option<ShellSetupEchoSuppression>) -> Option<Instant> {
+    pending.as_ref().map(|state| {
+        state
+            .marker_seen_at
+            .map(|seen_at| {
+                seen_at
+                    + if state.release_replacement_prompt {
+                        SHELL_SETUP_SETTLE_DELAY
+                    } else {
+                        // The original startup prompt is already visible, so
+                        // wait for a delayed redraw long enough to consume it.
+                        // `suppress_shell_setup_echo` still finishes early as
+                        // soon as that prompt is observed.
+                        SHELL_SETUP_TIMEOUT
+                    }
+            })
+            .unwrap_or(state.started_at + SHELL_SETUP_TIMEOUT)
+    })
+}
+
+fn finish_shell_setup_suppression(pending: &mut Option<ShellSetupEchoSuppression>) -> String {
+    let Some(state) = pending.take() else {
+        return String::new();
+    };
+    if !state.preserve_visible_prefix {
+        // setup 成功执行（检测到唯一的 ready OSC marker）后，shell 会输出新 prompt。
+        // 第一个 prompt 已被 split_prompt_tail_for_setup_wait 暂存（不 forward），
+        // 所以这里释放新 prompt——让用户看到一个完整 prompt，而不是空白。
+        if state.marker_seen_at.is_some() && state.release_replacement_prompt {
+            // Once ready is observed, buffer contains only the replacement
+            // prompt; the potentially large command echo has been discarded.
+            // The ready marker is the boundary, not the prompt's spelling.
+            // Preserve custom prompts and incomplete ANSI sequences so the
+            // next packet can complete them without losing colours/text.
+            if !state.buffer.is_empty() {
+                return state.buffer;
+            }
+            // 新 prompt 还没到（慢设备，settle/timeout 到期仍未见）：补换行
+            // 让晚到的新 prompt 从新行开始。
+            return "\r\n".to_string();
+        }
+        if !state.release_replacement_prompt {
+            // The startup path may have forwarded the login prompt while the
+            // auxiliary channels were still negotiating. In that case the
+            // prompt printed after setup is only a redraw and must remain
+            // suppressed. The visible prompt is already on screen.
+            return String::new();
+        }
+        // Root-shell injection keeps the prompt that was withheld before the
+        // write as a fail-open fallback. The initial login setup has no such
+        // fallback and therefore releases nothing when the marker is absent.
+        return state.fallback_visible.unwrap_or_default();
+    }
+    state.visible_prefix.unwrap_or_default()
+}
+
+// Pre-compiled private ready marker used by `suppress_shell_setup_echo` while
+// it inspects buffered shell-setup output. Compiled once instead of per chunk.
+static SHELL_SETUP_READY_RE: LazyLock<regex::Regex> = LazyLock::new(|| {
+    regex::Regex::new(r"\x1b\]7777;TranstermReady(?:\x07|\x1b\\)")
+        .expect("constant shell setup ready regex")
+});
+
+fn last_shell_setup_marker_end(value: &str) -> Option<usize> {
+    SHELL_SETUP_READY_RE
+        .find_iter(value)
+        .last()
+        .map(|mat| mat.end())
+}
+
+/// Suppresses the echo and replacement prompt from an internal CWD-hook
+/// injection. The timeout discards retained echo and restores input; data
+/// arriving after that recovery is forwarded to keep the terminal usable.
+fn suppress_shell_setup_echo(
+    pending: &mut Option<ShellSetupEchoSuppression>,
+    chunk: &str,
+) -> String {
+    if pending.is_none() {
+        return chunk.to_string();
+    }
+
+    let now = Instant::now();
+    if shell_setup_release_deadline(pending).is_some_and(|deadline| now >= deadline) {
+        return format!("{}{chunk}", finish_shell_setup_suppression(pending));
+    }
+
+    let state = pending
+        .as_mut()
+        .expect("pending CWD hook suppression exists");
+
+    state.buffer.push_str(chunk);
+    const HOOK_MARKER: &str = "__tdcwd";
+
+    // Save the visible banner before rotating the echo buffer. Indices into
+    // that buffer would become invalid once old redraws have been discarded.
+    if state.preserve_visible_prefix && state.visible_prefix.is_none() {
+        if let Some(length) = state
+            .buffer
+            .find("test -z \"$FISH_VERSION\"")
+            .or_else(|| state.buffer.find("test -z \"${FISH_VERSION-}\""))
+            .or_else(|| state.buffer.find("__tdcwd(){"))
+            .or_else(|| state.buffer.find(HOOK_MARKER))
+        {
+            let mut prefix = state.buffer[..length].to_string();
+            trim_string_front(&mut prefix, MAX_SHELL_SETUP_BUFFER_BYTES);
+            state.visible_prefix = Some(prefix);
+        }
+    }
+
+    if let Some(marker_end) = last_shell_setup_marker_end(&state.buffer) {
+        state.marker_seen_at.get_or_insert(now);
+        state.buffer.drain(..marker_end);
+    }
+
+    // Syntax-highlighting line editors may emit many redraws for one setup
+    // command. Reaching the memory limit is not an execution acknowledgement:
+    // keep suppressing until ready/timeout, retaining enough tail for a ready
+    // marker split across SSH packets (and never splitting UTF-8 characters).
+    if state.marker_seen_at.is_some() {
+        // Output after ready belongs to the new prompt. It must not lose its
+        // beginning (possibly an ANSI sequence) under the echo memory limit.
+        if state.buffer.len() > MAX_SHELL_SETUP_BUFFER_BYTES {
+            return finish_shell_setup_suppression(pending);
+        }
+        // marker 已看到后，setup 命令执行完 shell 会输出新 prompt。一旦新 prompt
+        // 到达（ready marker 之后的部分匹配 prompt 结尾），立即结束 suppress 并
+        // 释放新 prompt。第一个 prompt 已被 split_prompt_tail_for_setup_wait 暂存
+        // （不 forward），所以这里释放新 prompt 让用户看到一个完整 prompt。
+        // 慢设备（群晖）新 prompt 可能晚于 settle delay 到达，固定窗口兜不住；
+        // 改为检测到 prompt 就提前结束，无论快慢设备都只显示一个 prompt。
+        // 仅 preserve_visible_prefix == false（首次注入）路径生效；sudo 重注入
+        // 路径需要保留 visible prefix，仍走 settle delay 释放。
+        if !state.preserve_visible_prefix && looks_like_shell_prompt(&state.buffer) {
+            return finish_shell_setup_suppression(pending);
+        }
+    } else {
+        trim_string_front(&mut state.buffer, MAX_SHELL_SETUP_BUFFER_BYTES);
+    }
+
+    String::new()
+}
+
+/// Both SSH Data and ExtendedData may carry setup output. Completing setup
+/// through either stream must also release queued user input exactly once.
+fn filter_shell_setup_output(
+    pending: &mut Option<ShellSetupEchoSuppression>,
+    deferred_input: &mut Vec<TerminalInput<Vec<u8>>>,
+    terminal_write_tx: &mpsc::UnboundedSender<TerminalInput<Vec<u8>>>,
+    chunk: &str,
+) -> Result<String, String> {
+    let was_pending = pending.is_some();
+    let visible = suppress_shell_setup_echo(pending, chunk);
+    if was_pending && pending.is_none() {
+        flush_deferred_terminal_input(deferred_input, terminal_write_tx)?;
+    }
+    Ok(visible)
+}
+
+/// Returns the POSIX shell CWD setup script for the given platform.
+///
+/// Mirrors Electron's `shellCwdSetupForPlatform`:
+/// - `busybox` → compact ash-compatible one-liner (≤256 bytes to avoid
+///   BusyBox line-editor truncation)
+/// - `linux` / `darwin` → bash/zsh/posix-aware hook via PROMPT_COMMAND /
+///   precmd / PS1 (macOS bash/zsh support the same hooks as Linux)
+/// - `windows` / unknown → `None` (fail-closed, no injection)
+///
+/// The injected hook defines `__tdcwd` which emits OSC7 (`file://<path>`) and
+/// 1337 (`RemoteUser=<user>`) on every prompt, enabling CWD + sudo user
+/// tracking without polling.
+fn shell_cwd_setup_for_platform(platform: &str) -> Option<&'static str> {
+    match platform {
+        "busybox" => Some(BUSYBOX_SHELL_CWD_SETUP),
+        "linux" | "darwin" => Some(SHELL_CWD_SETUP),
+        _ => None,
+    }
+}
+
+/// Recover the interactive shell itself before installing CWD reporting.
+/// Keep sshd's missing-home warning visible and leave HOME unchanged. A valid
+/// current directory (including sshd's fallback to /) is already suitable;
+/// only a broken/inaccessible CWD needs a cd to a confirmed fallback.
+/// Send this as a separate short line so BusyBox line editors cannot truncate
+/// it together with their compact CWD hook. Fish skips the POSIX eval body.
+// `$FISH_VERSION` is understood by both POSIX shells and fish.  Do not use
+// the POSIX `${FISH_VERSION-}` default-value form here: fish parses the whole
+// command before evaluating the short-circuit and rejects that expansion,
+// leaving the injected line visible when the terminal is resized/redrawn.
+const SHELL_HOME_DIRECTORY_RECOVERY: &str = "test -z \"$FISH_VERSION\" && eval '[ -d \"${HOME-}\" ] || { { [ -r . ] && [ -x . ] && pwd -P >/dev/null 2>&1; } || { cd / 2>/dev/null || cd /tmp 2>/dev/null; }; }'";
+
+fn interactive_shell_setup_command(setup: &str) -> Vec<u8> {
+    format!(" {SHELL_HOME_DIRECTORY_RECOVERY}\r {setup}\r").into_bytes()
+}
+
+/// Linux shell CWD hook (bash / zsh / posix). Mirrors Electron's
+/// `SHELL_CWD_SETUP` constant. Uses `test -z "$FISH_VERSION"` as a fish
+/// guard so the hook is a no-op on fish (which has its own CWD reporting).
+const SHELL_CWD_SETUP: &str = concat!(
+    "test -z \"$FISH_VERSION\" && eval '",
+    "__tdcwd() { printf \"\\033]7;file://%s\\007\\033]1337;RemoteUser=%s\\007\" \"$(pwd -P 2>/dev/null)\" \"$(id -un 2>/dev/null)\"; }; ",
+    "__ftcommand() { printf \"\\033]7777;TranstermCommand\\007\"; }; ",
+    "printf \"\\033]7777;TranstermCommandTracking=0\\007\"; ",
+    "if [ -n \"${ZSH_VERSION-}\" ]; then autoload -Uz add-zsh-hook 2>/dev/null; add-zsh-hook -D precmd __tdcwd 2>/dev/null; add-zsh-hook precmd __tdcwd 2>/dev/null; ",
+    "add-zsh-hook -D preexec __ftcommand 2>/dev/null; if add-zsh-hook preexec __ftcommand 2>/dev/null; then printf \"\\033]7777;TranstermCommandTracking=1\\007\"; fi; ",
+    "elif [ -n \"${BASH_VERSION-}\" ]; then case \"${PROMPT_COMMAND-}\" in *\"__tdcwd\"*) ;; *) PROMPT_COMMAND=\"__tdcwd${PROMPT_COMMAND:+;$PROMPT_COMMAND}\" ;; esac; ",
+    // PS0 is available from Bash 4.4. Preserve user PS0 and do not install
+    // DEBUG traps (which can interfere with debuggers and shell frameworks).
+    "if [ \"${BASH_VERSINFO[0]}\" -gt 4 ] || { [ \"${BASH_VERSINFO[0]}\" -eq 4 ] && [ \"${BASH_VERSINFO[1]}\" -ge 4 ]; }; then ",
+    "case \"${PS0-}\" in *\"TranstermCommand\"*) ;; *) PS0=\"$(printf \"\\033]7777;TranstermCommand\\007\")${PS0-}\" ;; esac; ",
+    "printf \"\\033]7777;TranstermCommandTracking=1\\007\"; fi; ",
+    "else case \"${PS1-}\" in *\"__tdcwd\"*) ;; *) PS1=\"\\$(__tdcwd)${PS1-}\" ;; esac; fi; ",
+    "__tdcwd; ",
+    // A leading space is only a best-effort history guard. Bash users may
+    // have HISTCONTROL disabled, so remove this exact internal line by its
+    // marker after it has executed.
+    "if [ -n \"${BASH_VERSION-}\" ]; then ",
+    "__ft_hist_marker=\"__TRANSTERM_INTERNAL_SETUP_1\"; ",
+    "__ft_hist_line=$(HISTTIMEFORMAT= builtin history 1 2>/dev/null); ",
+    "case \"$__ft_hist_line\" in *\"__TRANSTERM_INTERNAL_SETUP_1\"*) ",
+    "__ft_hist_number=$(printf \"%s\\n\" \"$__ft_hist_line\" | sed -n \"s/^ *\\([0-9][0-9]*\\).*/\\1/p\"); ",
+    "case \"$__ft_hist_number\" in \"\"|*[!0-9]*) ;; *) builtin history -d \"$__ft_hist_number\" 2>/dev/null ;; esac; ",
+    ";; esac; ",
+    "unset __ft_hist_marker __ft_hist_line __ft_hist_number; ",
+    "fi; ",
+    "printf \"\\033]7777;TranstermReady\\007\"' || printf \"\\033]7777;TranstermReady\\007\"",
+);
+
+/// BusyBox ash CWD hook. Kept under 256 bytes to avoid truncation in the
+/// small interactive line-editing buffer. Mirrors Electron's
+/// `BUSYBOX_SHELL_CWD_SETUP` constant.
+const BUSYBOX_SHELL_CWD_SETUP: &str = "__tdcwd(){ printf '\\033]7;file://%s\\007\\033]1337;RemoteUser=%s\\007' \"$(pwd -P 2>/dev/null)\" \"$(id -un 2>/dev/null)\";};PS1='$(__tdcwd)'\"${PS1-}\";__tdcwd;printf '\\033]7777;TranstermReady\\007'";
+
+#[cfg(test)]
+mod shell_setup_echo_tests {
+    include!("setup_echo_tests.rs");
+}
+
+#[cfg(all(test, unix))]
+mod shell_command_hook_tests {
+    include!("command_hook_tests.rs");
+}

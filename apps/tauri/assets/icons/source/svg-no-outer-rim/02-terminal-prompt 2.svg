@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+<defs>
+    <linearGradient id="promptStroke" x1="500" y1="640" x2="850" y2="1125" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" />
+      <stop offset="0.5" stop-color="#F7F7F6" />
+      <stop offset="1" stop-color="#ECECEB" />
+    </linearGradient>
+  </defs>
+  <g transform="matrix(0.7 0 0 0.7 -153.58724951 -182.60463313)"><g transform="translate(92.444443,83.73716)">
+    <path d="M 568.03934534 642.31727484 L 882.70441137 873.46013198 A 42.85714286 42.85714286 0 0 1 882.70441137 942.53986802 L 568.03934534 1173.68272516 A 42.85714286 42.85714286 0 0 1 517.29558863 1104.60298913 L 784.93999400 908 L 517.29558863 711.39701087 A 42.85714286 42.85714286 0 0 1 568.03934534 642.31727484 Z" fill="url(#promptStroke)" />
+  </g>
+</g>
+</svg>

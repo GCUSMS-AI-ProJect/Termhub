@@ -1,0 +1,474 @@
+// UI preferences, security, and terminal zoom commands.
+#[tauri::command]
+pub fn app_get_ui_preferences(app: AppHandle) -> Result<UiPreferences, AppError> {
+    let path = crate::storage::state_path(&app)?;
+    if path.exists() {
+        let content = std::fs::read_to_string(&path)
+            .map_err(|error| AppError::Storage(error.to_string()))?;
+        let preferences: UiPreferences = serde_json::from_str(&content)
+            .map_err(|error| AppError::Serialization(error.to_string()))?;
+        Ok(normalize_ui_preferences(preferences))
+    } else {
+        Ok(UiPreferences {
+            theme: DEFAULT_UI_THEME.to_string(),
+            locale: default_ui_locale().to_string(),
+            theme_config: default_theme_config(),
+            custom_themes: Vec::new(),
+            auto_check_updates: default_auto_check_updates(),
+            show_macos_menu_bar_icon: default_show_macos_menu_bar_icon(),
+            app_icon: default_app_icon(),
+            update_channel: default_update_channel(),
+            terminal_zoom_locked: false,
+            ui_zoom_locked: false,
+            ui_zoom_percent: default_ui_zoom_percent(),
+            remember_window_size: default_remember_window_size(),
+            tab_bar_layout: default_tab_bar_layout(),
+            compact_tab_bar: default_compact_tab_bar(),
+            legacy_file_list_font_size: None,
+            local_terminal_shells: default_local_terminal_shells(),
+            file_panel_remember_ratio: default_file_panel_remember_ratio(),
+            resource_monitoring_metrics: default_resource_monitoring_metrics(),
+            resource_monitoring_metric_order: default_resource_monitoring_metric_order(),
+            connection_defaults: SshConnectionDefaults::default(),
+            mcp_agent: McpAgentPreferences::default(),
+            overview_show_stats: default_overview_show_stats(),
+            overview_show_recent: default_overview_show_recent(),
+            overview_show_all_connections: default_overview_show_all_connections(),
+            overview_show_quick_actions: default_overview_show_quick_actions(),
+            overview_section_order: default_overview_section_order(),
+        })
+    }
+}
+
+#[tauri::command]
+pub fn app_list_local_terminal_shells(
+) -> Vec<crate::sessions::local_terminal::LocalTerminalShellOption> {
+    crate::sessions::local_terminal::available_shells()
+}
+
+#[tauri::command]
+pub fn app_set_ui_preferences(
+    app: AppHandle,
+    input: UiPreferencesInput,
+) -> Result<UiPreferences, AppError> {
+    let path = crate::storage::state_path(&app)?;
+    let mut preferences = app_get_ui_preferences(app.clone())?;
+    let previous_locale = preferences.locale.clone();
+    let previous_terminal_zoom_locked = preferences.terminal_zoom_locked;
+    let previous_ui_zoom_locked = preferences.ui_zoom_locked;
+    #[cfg(target_os = "macos")]
+    let previous_show_macos_menu_bar_icon = preferences.show_macos_menu_bar_icon;
+    let previous_app_icon = preferences.app_icon.clone();
+    #[cfg(target_os = "macos")]
+    let previous_ui_zoom_percent = preferences.ui_zoom_percent;
+    #[cfg(target_os = "macos")]
+    let previous_compact_tab_bar = preferences.compact_tab_bar;
+    #[cfg(target_os = "macos")]
+    let theme_changed = input.theme.is_some() || input.theme_config.is_some();
+    let theme_was_provided = input.theme.is_some();
+    if let Some(theme) = input.theme {
+        preferences.theme = theme;
+    }
+    if let Some(locale) = input.locale {
+        preferences.locale = locale;
+    }
+    if let Some(theme_config) = input.theme_config {
+        let theme_variant = theme_config.variant.clone();
+        preferences.theme_config = theme_config;
+        if !theme_was_provided {
+            preferences.theme = if theme_variant == "light" {
+                "default-light".to_string()
+            } else {
+                "default-dark".to_string()
+            };
+        }
+    }
+    if let Some(custom_themes) = input.custom_themes {
+        preferences.custom_themes = custom_themes;
+    }
+    if let Some(auto_check_updates) = input.auto_check_updates {
+        preferences.auto_check_updates = auto_check_updates;
+    }
+    if let Some(show_macos_menu_bar_icon) = input.show_macos_menu_bar_icon {
+        preferences.show_macos_menu_bar_icon = show_macos_menu_bar_icon;
+    }
+    if let Some(app_icon) = input.app_icon {
+        preferences.app_icon = app_icon;
+    }
+    if let Some(update_channel) = input.update_channel {
+        preferences.update_channel = update_channel;
+    }
+    if let Some(terminal_zoom_locked) = input.terminal_zoom_locked {
+        preferences.terminal_zoom_locked = terminal_zoom_locked;
+    }
+    if let Some(ui_zoom_locked) = input.ui_zoom_locked {
+        preferences.ui_zoom_locked = ui_zoom_locked;
+    }
+    if let Some(ui_zoom_percent) = input.ui_zoom_percent {
+        preferences.ui_zoom_percent = ui_zoom_percent;
+    }
+    if let Some(remember_window_size) = input.remember_window_size {
+        preferences.remember_window_size = remember_window_size;
+    }
+    if let Some(tab_bar_layout) = input.tab_bar_layout {
+        preferences.tab_bar_layout = tab_bar_layout;
+    }
+    if let Some(compact_tab_bar) = input.compact_tab_bar {
+        preferences.compact_tab_bar = compact_tab_bar;
+    }
+    if let Some(local_terminal_shells) = input.local_terminal_shells {
+        if let Some(value) = local_terminal_shells.win32 {
+            preferences.local_terminal_shells.win32 = value;
+        }
+        if let Some(value) = local_terminal_shells.darwin {
+            preferences.local_terminal_shells.darwin = value;
+        }
+        if let Some(value) = local_terminal_shells.linux {
+            preferences.local_terminal_shells.linux = value;
+        }
+    }
+    if let Some(file_panel_remember_ratio) = input.file_panel_remember_ratio {
+        preferences.file_panel_remember_ratio = file_panel_remember_ratio;
+    }
+    if let Some(resource_monitoring_metrics) = input.resource_monitoring_metrics {
+        preferences.resource_monitoring_metrics = resource_monitoring_metrics;
+    }
+    if let Some(resource_monitoring_metric_order) = input.resource_monitoring_metric_order {
+        preferences.resource_monitoring_metric_order = resource_monitoring_metric_order;
+    }
+    let monitoring_defaults_changed = input.connection_defaults.as_ref().is_some_and(|defaults| {
+        defaults.enable_exec_channel.is_some() || defaults.enable_resource_monitoring.is_some()
+    });
+    if let Some(connection_defaults) = input.connection_defaults {
+        if let Some(value) = connection_defaults.use_empty_password {
+            preferences.connection_defaults.use_empty_password = value;
+        }
+        if let Some(value) = connection_defaults.enable_exec_channel {
+            preferences.connection_defaults.enable_exec_channel = value;
+        }
+        if let Some(value) = connection_defaults.enable_resource_monitoring {
+            preferences.connection_defaults.enable_resource_monitoring = value;
+        }
+        if let Some(value) = connection_defaults.resource_monitoring_interval_seconds {
+            preferences
+                .connection_defaults
+                .resource_monitoring_interval_seconds = value;
+        }
+        if let Some(value) = connection_defaults.resource_monitoring_metrics {
+            preferences.connection_defaults.resource_monitoring_metrics = value;
+        }
+        if let Some(value) = connection_defaults.resource_monitoring_metric_order {
+            preferences
+                .connection_defaults
+                .resource_monitoring_metric_order = value;
+        }
+        if let Some(value) = connection_defaults.reconnect_mode {
+            preferences.connection_defaults.reconnect_mode = value;
+        }
+        if let Some(value) = connection_defaults.legacy_algorithms {
+            preferences.connection_defaults.legacy_algorithms = value;
+        }
+        if let Some(value) = connection_defaults.ssh_agent_socket_path {
+            preferences.connection_defaults.ssh_agent_socket_path = value.trim().to_string();
+        }
+    }
+    if let Some(mcp_agent) = input.mcp_agent {
+        if let Some(connection_scope) = mcp_agent.connection_scope {
+            preferences.mcp_agent.connection_scope = connection_scope;
+        }
+        if let Some(operation_policy) = mcp_agent.operation_policy {
+            preferences.mcp_agent.operation_policy = operation_policy;
+        }
+        if let Some(allowed_profile_ids) = mcp_agent.allowed_profile_ids {
+            preferences.mcp_agent.allowed_profile_ids = allowed_profile_ids;
+        }
+    }
+    if let Some(overview_show_stats) = input.overview_show_stats {
+        preferences.overview_show_stats = overview_show_stats;
+    }
+    if let Some(overview_show_recent) = input.overview_show_recent {
+        preferences.overview_show_recent = overview_show_recent;
+    }
+    if let Some(overview_show_all_connections) = input.overview_show_all_connections {
+        preferences.overview_show_all_connections = overview_show_all_connections;
+    }
+    if let Some(overview_show_quick_actions) = input.overview_show_quick_actions {
+        preferences.overview_show_quick_actions = overview_show_quick_actions;
+    }
+    if let Some(overview_section_order) = input.overview_section_order {
+        preferences.overview_section_order = overview_section_order;
+    }
+    let preferences = normalize_ui_preferences(preferences);
+    let content = serde_json::to_string_pretty(&preferences)
+        .map_err(|error| AppError::Serialization(error.to_string()))?;
+    std::fs::write(path, content).map_err(|error| AppError::Storage(error.to_string()))?;
+    if previous_app_icon != preferences.app_icon {
+        if let Err(error) = crate::app_icon::set_app_icon(&app, &preferences.app_icon) {
+            crate::services::logging::warn(
+                &app,
+                "ui-preferences",
+                format!("failed to update app icon: {error}"),
+            );
+        }
+    }
+    #[cfg(target_os = "macos")]
+    if previous_show_macos_menu_bar_icon != preferences.show_macos_menu_bar_icon {
+        let result = app
+            .tray_by_id("main")
+            .ok_or_else(|| AppError::Window("main tray icon is unavailable".to_string()))
+            .and_then(|tray| {
+                tray.set_visible(preferences.show_macos_menu_bar_icon)
+                    .map_err(|error| AppError::Window(error.to_string()))
+            });
+        if let Err(error) = result {
+            crate::services::logging::warn(
+                &app,
+                "ui-preferences",
+                format!("failed to update macOS menu bar icon visibility: {error}"),
+            );
+        }
+    }
+    if previous_locale != preferences.locale
+        || previous_terminal_zoom_locked != preferences.terminal_zoom_locked
+        || previous_ui_zoom_locked != preferences.ui_zoom_locked
+    {
+        if let Err(error) =
+            crate::install_localized_application_menu(&app, preferences.locale == "enUS")
+        {
+            // Preferences are already durable at this point. Do not report the
+            // whole save as failed (and invite a duplicate retry) merely because
+            // native menu refresh failed on the current platform.
+            crate::services::logging::warn(
+                &app,
+                "ui-preferences",
+                format!("failed to refresh native menu: {error}"),
+            );
+        }
+        if previous_locale != preferences.locale {
+            if let Err(error) =
+                crate::install_localized_tray_menu(&app, preferences.locale == "enUS")
+            {
+                crate::services::logging::warn(
+                    &app,
+                    "ui-preferences",
+                    format!("failed to refresh tray menu: {error}"),
+                );
+            }
+        }
+    }
+    if monitoring_defaults_changed {
+        schedule_disabled_monitoring_cleanup(&app, &preferences.connection_defaults);
+    }
+    let _ = app.emit("app:ui-preferences-changed", &preferences);
+    // Page zoom and the tab bar height change renderer layout without a native
+    // window resize. Sync AppKit appearance and control geometry after theme,
+    // zoom or tab bar height changes.
+    #[cfg(target_os = "macos")]
+    if previous_ui_zoom_percent != preferences.ui_zoom_percent
+        || previous_compact_tab_bar != preferences.compact_tab_bar
+        || theme_changed
+    {
+        crate::schedule_macos_traffic_light_recalibration(&app);
+    }
+    Ok(preferences)
+}
+
+#[tauri::command]
+pub fn app_get_security_settings(
+    app: AppHandle,
+) -> Result<crate::services::security::SecuritySettings, AppError> {
+    crate::services::security::get_settings(&app)
+}
+
+#[tauri::command]
+pub fn app_set_security_settings(
+    app: AppHandle,
+    input: crate::services::security::SecuritySettingsInput,
+) -> Result<crate::services::security::SecuritySettings, AppError> {
+    crate::services::security::save_settings(&app, input)
+}
+
+#[tauri::command]
+pub fn app_reset_security_backup_password(
+    app: AppHandle,
+) -> Result<crate::services::security::SecuritySettings, AppError> {
+    crate::services::security::reset_backup_password(&app)
+}
+
+#[tauri::command]
+pub fn app_verify_security_password(
+    app: AppHandle,
+    mut password: String,
+) -> Result<bool, AppError> {
+    let result = crate::services::security::verify_lock_password(&app, &password);
+    password.zeroize();
+    result
+}
+
+fn current_local_terminal_shell(preferences: &UiPreferences) -> String {
+    #[cfg(target_os = "windows")]
+    {
+        preferences.local_terminal_shells.win32.clone()
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        preferences.local_terminal_shells.darwin.clone()
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        preferences.local_terminal_shells.linux.clone()
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
+    {
+        crate::sessions::local_terminal::default_launch().shell
+    }
+}
+
+/// Toggle terminal font zoom from a native menu item while keeping the
+/// renderer and settings page on the same persisted preference/event path.
+pub fn app_toggle_terminal_zoom_lock(app: AppHandle) -> Result<UiPreferences, AppError> {
+    let current = app_get_ui_preferences(app.clone())?;
+    app_set_ui_preferences(
+        app,
+        UiPreferencesInput {
+            theme: None,
+            locale: None,
+            theme_config: None,
+            custom_themes: None,
+            auto_check_updates: None,
+            show_macos_menu_bar_icon: None,
+            app_icon: None,
+            update_channel: None,
+            terminal_zoom_locked: Some(!current.terminal_zoom_locked),
+            ui_zoom_locked: None,
+            ui_zoom_percent: None,
+            remember_window_size: None,
+            tab_bar_layout: None,
+            compact_tab_bar: None,
+            local_terminal_shells: None,
+            file_panel_remember_ratio: None,
+            resource_monitoring_metrics: None,
+            resource_monitoring_metric_order: None,
+            connection_defaults: None,
+            mcp_agent: None,
+            overview_show_stats: None,
+            overview_show_recent: None,
+            overview_show_all_connections: None,
+            overview_show_quick_actions: None,
+            overview_section_order: None,
+        },
+    )
+}
+
+/// Toggle app interface zoom from a native menu item while keeping the
+/// renderer and settings page on the same persisted preference/event path.
+pub fn app_toggle_ui_zoom_lock(app: AppHandle) -> Result<UiPreferences, AppError> {
+    let current = app_get_ui_preferences(app.clone())?;
+    app_set_ui_preferences(
+        app,
+        UiPreferencesInput {
+            theme: None,
+            locale: None,
+            theme_config: None,
+            custom_themes: None,
+            auto_check_updates: None,
+            show_macos_menu_bar_icon: None,
+            app_icon: None,
+            update_channel: None,
+            terminal_zoom_locked: None,
+            ui_zoom_locked: Some(!current.ui_zoom_locked),
+            ui_zoom_percent: None,
+            remember_window_size: None,
+            tab_bar_layout: None,
+            compact_tab_bar: None,
+            local_terminal_shells: None,
+            file_panel_remember_ratio: None,
+            resource_monitoring_metrics: None,
+            resource_monitoring_metric_order: None,
+            connection_defaults: None,
+            mcp_agent: None,
+            overview_show_stats: None,
+            overview_show_recent: None,
+            overview_show_all_connections: None,
+            overview_show_quick_actions: None,
+            overview_section_order: None,
+        },
+    )
+}
+
+/// Adjust the saved app interface zoom from a native View menu item.
+pub fn app_adjust_ui_zoom(app: AppHandle, operation: &str) -> Result<UiPreferences, AppError> {
+    let current = app_get_ui_preferences(app.clone())?;
+    if current.ui_zoom_locked {
+        return Ok(current);
+    }
+    let next = match operation {
+        "in" => current.ui_zoom_percent + UI_ZOOM_PERCENT_STEP,
+        "out" => current.ui_zoom_percent - UI_ZOOM_PERCENT_STEP,
+        _ => default_ui_zoom_percent(),
+    };
+    app_set_ui_preferences(
+        app,
+        UiPreferencesInput {
+            theme: None,
+            locale: None,
+            theme_config: None,
+            custom_themes: None,
+            auto_check_updates: None,
+            show_macos_menu_bar_icon: None,
+            app_icon: None,
+            update_channel: None,
+            terminal_zoom_locked: None,
+            ui_zoom_locked: None,
+            ui_zoom_percent: Some(next),
+            remember_window_size: None,
+            tab_bar_layout: None,
+            compact_tab_bar: None,
+            local_terminal_shells: None,
+            file_panel_remember_ratio: None,
+            resource_monitoring_metrics: None,
+            resource_monitoring_metric_order: None,
+            connection_defaults: None,
+            mcp_agent: None,
+            overview_show_stats: None,
+            overview_show_recent: None,
+            overview_show_all_connections: None,
+            overview_show_quick_actions: None,
+            overview_section_order: None,
+        },
+    )
+}
+
+fn normalize_ui_state(value: Value) -> Result<serde_json::Map<String, Value>, AppError> {
+    match value {
+        Value::Object(mut object) => {
+            let mut states = object
+                .remove("values")
+                .and_then(|value| value.as_object().cloned())
+                .unwrap_or_default();
+            object.remove("version");
+            states.extend(object);
+            Ok(states)
+        }
+        Value::Array(items) => Ok(items
+            .into_iter()
+            .filter_map(|item| {
+                let key = item.get("key")?.as_str()?.to_string();
+                let value = item.get("value")?.clone();
+                Some((key, value))
+            })
+            .collect()),
+        _ => Err(AppError::Serialization("UI 状态文件格式无效".to_string())),
+    }
+}
+
+fn read_ui_state(app: &AppHandle) -> Result<serde_json::Map<String, Value>, AppError> {
+    normalize_ui_state(crate::storage::read_json_object(app, "ui-state.json")?)
+}
+
+fn write_ui_state(app: &AppHandle, states: serde_json::Map<String, Value>) -> Result<(), AppError> {
+    write_json_object(app, "ui-state.json", &Value::Object(states))
+}

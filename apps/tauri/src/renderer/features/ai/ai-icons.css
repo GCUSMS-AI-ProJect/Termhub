@@ -1,0 +1,27 @@
+.ai-copilot-panel .ai-copilot-setup-orb {
+  box-sizing: border-box;
+  padding: 11px;
+}
+
+.ai-copilot-empty-chat > .ai-icon,
+.ai-copilot-conversation-list-empty > .ai-icon {
+  box-sizing: border-box;
+  padding: 8px;
+}
+
+.ai-settings-provider-card > .ai-icon,
+.ai-settings-privacy-card > .ai-icon {
+  box-sizing: border-box;
+  padding: 7px;
+}
+
+.ai-copilot-panel .ai-copilot-message-actions .ai-icon,
+.ai-copilot-panel .ai-copilot-copy-button .ai-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.ai-copilot-panel .ai-copilot-mode-value .ai-icon {
+  width: 13px;
+  height: 13px;
+}

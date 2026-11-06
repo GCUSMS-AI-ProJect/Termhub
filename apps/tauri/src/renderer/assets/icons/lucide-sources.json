@@ -1,0 +1,222 @@
+{
+  "source": "https://github.com/lucide-icons/lucide",
+  "commit": "20aef31db93fe4d9f398dbb15b120d99c48eef95",
+  "downloadedAt": "2026-10-21T12:23:04.922Z",
+  "icons": [
+    {
+      "name": "bot",
+      "file": "system/lucide-bot.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/bot.svg"
+    },
+    {
+      "name": "sparkles",
+      "file": "system/lucide-sparkles.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/sparkles.svg"
+    },
+    {
+      "name": "message-square",
+      "file": "system/lucide-message-square.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/message-square.svg"
+    },
+    {
+      "name": "message-square-plus",
+      "file": "system/lucide-message-square-plus.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/message-square-plus.svg"
+    },
+    {
+      "name": "sliders-horizontal",
+      "file": "system/lucide-sliders-horizontal.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/sliders-horizontal.svg"
+    },
+    {
+      "name": "brain-circuit",
+      "file": "system/lucide-brain-circuit.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/brain-circuit.svg"
+    },
+    {
+      "name": "scan-search",
+      "file": "system/lucide-scan-search.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/scan-search.svg"
+    },
+    {
+      "name": "loader-circle",
+      "file": "system/lucide-loader-circle.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/loader-circle.svg"
+    },
+    {
+      "name": "ellipsis",
+      "file": "system/lucide-ellipsis.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/ellipsis.svg"
+    },
+    {
+      "name": "info",
+      "file": "system/lucide-info.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/info.svg"
+    },
+    {
+      "name": "plus",
+      "file": "actions/lucide-plus.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/plus.svg"
+    },
+    {
+      "name": "search",
+      "file": "actions/lucide-search.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/search.svg"
+    },
+    {
+      "name": "check",
+      "file": "actions/lucide-check.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/check.svg"
+    },
+    {
+      "name": "copy",
+      "file": "actions/lucide-copy.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/copy.svg"
+    },
+    {
+      "name": "pencil",
+      "file": "actions/lucide-pencil.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/pencil.svg"
+    },
+    {
+      "name": "trash",
+      "file": "actions/lucide-trash.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/trash.svg"
+    },
+    {
+      "name": "refresh-cw",
+      "file": "actions/lucide-refresh-cw.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/refresh-cw.svg"
+    },
+    {
+      "name": "square",
+      "file": "actions/lucide-square.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/square.svg"
+    },
+    {
+      "name": "panel-left",
+      "file": "navigation/lucide-panel-left.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/panel-left.svg"
+    },
+    {
+      "name": "panel-right-close",
+      "file": "navigation/lucide-panel-right-close.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/panel-right-close.svg"
+    },
+    {
+      "name": "arrow-left",
+      "file": "navigation/lucide-arrow-left.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/arrow-left.svg"
+    },
+    {
+      "name": "arrow-right",
+      "file": "navigation/lucide-arrow-right.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/arrow-right.svg"
+    },
+    {
+      "name": "arrow-up",
+      "file": "navigation/lucide-arrow-up.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/arrow-up.svg"
+    },
+    {
+      "name": "chevron-up",
+      "file": "navigation/lucide-chevron-up.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/chevron-up.svg"
+    },
+    {
+      "name": "chevron-right",
+      "file": "navigation/lucide-chevron-right.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/chevron-right.svg"
+    },
+    {
+      "name": "x",
+      "file": "navigation/lucide-x.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/x.svg"
+    },
+    {
+      "name": "external-link",
+      "file": "navigation/lucide-external-link.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/external-link.svg"
+    },
+    {
+      "name": "paperclip",
+      "file": "files/lucide-paperclip.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/paperclip.svg"
+    },
+    {
+      "name": "folder-open",
+      "file": "files/lucide-folder-open.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/folder-open.svg"
+    },
+    {
+      "name": "file-code-corner",
+      "file": "files/lucide-file-code-corner.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/file-code-corner.svg"
+    },
+    {
+      "name": "file-text",
+      "file": "files/lucide-file-text.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/file-text.svg"
+    },
+    {
+      "name": "image",
+      "file": "files/lucide-image.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/image.svg"
+    },
+    {
+      "name": "upload",
+      "file": "files/lucide-upload.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/upload.svg"
+    },
+    {
+      "name": "square-terminal",
+      "file": "network/lucide-square-terminal.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/square-terminal.svg"
+    },
+    {
+      "name": "monitor-up",
+      "file": "network/lucide-monitor-up.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/monitor-up.svg"
+    },
+    {
+      "name": "server",
+      "file": "network/lucide-server.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/server.svg"
+    },
+    {
+      "name": "eye",
+      "file": "security/lucide-eye.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/eye.svg"
+    },
+    {
+      "name": "eye-off",
+      "file": "security/lucide-eye-off.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/eye-off.svg"
+    },
+    {
+      "name": "shield",
+      "file": "security/lucide-shield.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/shield.svg"
+    },
+    {
+      "name": "shield-check",
+      "file": "security/lucide-shield-check.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/shield-check.svg"
+    },
+    {
+      "name": "lock-keyhole",
+      "file": "security/lucide-lock-keyhole.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/lock-keyhole.svg"
+    },
+    {
+      "name": "key-round",
+      "file": "security/lucide-key-round.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/key-round.svg"
+    },
+    {
+      "name": "save",
+      "file": "security/lucide-save.svg",
+      "source": "https://github.com/lucide-icons/lucide/blob/20aef31db93fe4d9f398dbb15b120d99c48eef95/icons/save.svg"
+    }
+  ]
+}

@@ -1,0 +1,171 @@
+import type { Terminal } from '@xterm/xterm'
+import { isBoxDrawingGlyph } from './box-drawing'
+
+const SOURCE_CLASS = 'xterm-fitted-symbol-source'
+type SourceStyle = { width: string; spacing: string; text: string }
+type GlyphCell = { text: string; width: number }
+
+/** DOM xterm fits a fallback glyph's advance with negative letter-spacing,
+ * which does not shrink its ink. The next ANSI/selection span can then paint
+ * over the right half. Fit overflowing symbols into their buffer cells before
+ * any background is painted; keep the original text and cell columns intact.
+ */
+export function registerTerminalSymbolGlyphRenderer(terminal: Terminal) {
+  const rows = terminal.element?.querySelector<HTMLElement>('.xterm-rows')
+  const view = rows?.ownerDocument.defaultView
+  const context = rows?.ownerDocument.createElement('canvas').getContext('2d')
+  if (!rows || !view || !context) return { dispose() {} }
+  const sources = new Map<HTMLElement, SourceStyle>()
+  const metrics = new Map<string, { left: number; width: number }>()
+  const reusableCell = terminal.buffer.active.getNullCell()
+
+  const collectRow = (row: HTMLElement, rowIndex: number, cellWidth: number, updates: Array<() => void>) => {
+    const line = terminal.buffer.active.getLine(terminal.buffer.active.viewportY + rowIndex)
+    if (!line || cellWidth <= 0) return
+    let column = 0
+    for (const source of Array.from(row.children)) {
+      if (!(source instanceof view.HTMLElement)) continue
+      const text = source.textContent ?? ''
+      const cells: GlyphCell[] = []
+      let offset = 0
+      // Map DOM text back to buffer widths, including wide and combined cells.
+      // Fail closed for a joiner/decorator that supplies different text.
+      while (offset < text.length && column < line.length) {
+        const cell = line.getCell(column++, reusableCell)!
+        if (cell.getWidth() === 0) continue
+        const chars = cell.isInvisible() ? ' ' : cell.getChars() || ' '
+        if (text.slice(offset, offset + chars.length).replace(/\u00a0/g, ' ') !== chars.replace(/\u00a0/g, ' ')) return
+        cells.push({ text: text.slice(offset, offset + chars.length), width: cell.getWidth() })
+        offset += chars.length
+      }
+      if (offset !== text.length) return
+      if (source.classList.contains(SOURCE_CLASS) || !/[\p{Symbol}\p{Punctuation}]/u.test(text)) continue
+      // Block elements have their own cell-geometry renderer.
+      if (/[\u2580-\u259f]/u.test(text)) continue
+      const columns = cells.reduce((total, cell) => total + cell.width, 0)
+      if (columns === 0) continue
+      const style = view.getComputedStyle(source)
+      const font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`
+      context.font = font
+      const fits = cells.map((cell) => {
+        if (!/[\p{Symbol}\p{Punctuation}]/u.test(cell.text)) return undefined
+        // Box drawing belongs to the cell-geometry renderer. Fitting only some
+        // arms to font ink breaks the shared grid at corners and intersections.
+        if (cell.text.length === 1 && isBoxDrawingGlyph(cell.text.codePointAt(0)!)) return undefined
+        const key = `${font}\n${cell.text}`
+        let ink = metrics.get(key)
+        if (!ink) {
+          const measured = context.measureText(cell.text)
+          const left = -measured.actualBoundingBoxLeft
+          ink = { left, width: measured.actualBoundingBoxRight - left }
+          metrics.set(key, ink)
+          if (metrics.size > 2048) metrics.clear()
+        }
+        // Even a subpixel overhang can contain an entire device-pixel edge on
+        // Retina displays. Only tolerate floating-point measurement noise.
+        return ink.left < -0.01 || ink.left + ink.width > cellWidth * cell.width + 0.01 ? ink : undefined
+      })
+      const hasSymbol = cells.some(
+        (cell) =>
+          /[\u0080-\u{10ffff}]/u.test(cell.text) &&
+          /[\p{Symbol}\p{Punctuation}]/u.test(cell.text) &&
+          !(cell.text.length === 1 && isBoxDrawingGlyph(cell.text.codePointAt(0)!))
+      )
+      // Fallback font advances can differ from xterm's repeated-glyph measurement even when ink fits.
+      if (!fits.some(Boolean) && !hasSymbol) continue
+      updates.push(() => {
+        sources.set(source, { width: source.style.width, spacing: source.style.letterSpacing, text })
+        source.classList.add(SOURCE_CLASS)
+        source.style.width = `${cellWidth * columns}px`
+        source.style.letterSpacing = '0px'
+        const fragment = row.ownerDocument.createDocumentFragment()
+        cells.forEach((cell, index) => {
+          const slot = row.ownerDocument.createElement('span')
+          slot.style.width = `${cellWidth * cell.width}px`
+          // xterm assigns normal weight to every non-bold span, including nested
+          // wrappers. Preserve the source's actual font weight in both wrappers.
+          slot.style.fontWeight = 'inherit'
+          const ink = fits[index]
+          // A selection starting in a wide cell's continuation must not paint over its ink.
+          if (ink || cell.width > 1) {
+            slot.style.position = 'relative'
+            slot.style.zIndex = '2'
+          }
+          if (ink) {
+            const glyph = row.ownerDocument.createElement('span')
+            const available = cellWidth * cell.width
+            // Fit ink, not font side bearings; preserve circles/emoji proportions.
+            const scale = Math.min(1, available / ink.width)
+            const shift = Math.max(-ink.left * scale, Math.min(0, available - (ink.left + ink.width) * scale))
+            glyph.textContent = cell.text
+            glyph.style.fontWeight = 'inherit'
+            glyph.style.transformOrigin = 'left center'
+            glyph.style.transform = `translateX(${shift}px) scale(${scale})`
+            slot.append(glyph)
+          } else slot.textContent = cell.text
+          fragment.append(slot)
+        })
+        source.replaceChildren(fragment)
+      })
+    }
+  }
+  const renderRows = (indexes: number[]) => {
+    for (const source of sources.keys()) if (!rows.contains(source)) sources.delete(source)
+    const affected = indexes.filter((index) => {
+      const row = rows.children[index]
+      // Graphical cells are handled by the block adapter, not fallback-font fitting.
+      const text = (row?.textContent ?? '').replace(/[\u2500-\u259f]/gu, '')
+      return (
+        row instanceof view.HTMLElement &&
+        /[\u0080-\u{10ffff}]/u.test(text) &&
+        /[\p{Symbol}\p{Punctuation}]/u.test(text) &&
+        Array.from(row.children).some(
+          (source) =>
+            !source.classList.contains(SOURCE_CLASS) &&
+            /[\p{Symbol}\p{Punctuation}]/u.test((source.textContent ?? '').replace(/[\u2500-\u259f]/gu, ''))
+        )
+      )
+    })
+    if (!affected.length) return
+    const cellWidth = rows.getBoundingClientRect().width / terminal.cols
+    const updates: Array<() => void> = []
+    // Measure all affected rows before changing DOM, avoiding a layout flush per symbol.
+    for (const index of affected) {
+      const row = rows.children[index]
+      if (row instanceof view.HTMLElement) collectRow(row, index, cellWidth, updates)
+    }
+    for (const update of updates) update()
+    // Our wrappers are already fitted; observing them again only repeats the row scan.
+    observer.takeRecords()
+  }
+  const render = (start = 0, end = rows.children.length - 1) =>
+    renderRows(Array.from({ length: Math.max(0, end - start + 1) }, (_, index) => start + index))
+  const subscription = terminal.onRender(({ start, end }) => render(start, end))
+  const observer = new view.MutationObserver((records) => {
+    const changed = new Set<HTMLElement>()
+    for (const record of records) {
+      let row = record.target instanceof view.HTMLElement ? record.target : record.target.parentElement
+      while (row && row.parentElement !== rows) row = row.parentElement
+      if (row) changed.add(row)
+    }
+    const children = Array.from(rows.children)
+    const indexes = [...changed].map((row) => children.indexOf(row)).filter((index) => index >= 0)
+    if (indexes.length) renderRows(indexes)
+  })
+  observer.observe(rows, { childList: true, subtree: true })
+  render()
+  return {
+    dispose() {
+      subscription.dispose()
+      observer.disconnect()
+      for (const [source, original] of sources) {
+        source.textContent = original.text
+        source.style.width = original.width
+        source.style.letterSpacing = original.spacing
+        source.classList.remove(SOURCE_CLASS)
+      }
+      sources.clear()
+      metrics.clear()
+    }
+  }
+}

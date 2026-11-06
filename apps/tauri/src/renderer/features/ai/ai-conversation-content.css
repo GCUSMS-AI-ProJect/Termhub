@@ -1,0 +1,353 @@
+.ai-copilot-panel .ai-copilot-message-viewport {
+  display: block;
+  padding: 18px 16px 24px;
+  scroll-padding-block: 16px 64px;
+}
+
+.ai-conversation-content {
+  display: flex;
+  min-width: 0;
+  min-height: 100%;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.ai-copilot-panel .ai-copilot-empty-chat {
+  flex: 1;
+  padding-block: 24px;
+}
+
+.ai-copilot-panel .ai-copilot-message {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  gap: 8px;
+  animation: ai-conversation-appear 160ms ease-out;
+}
+
+.ai-copilot-panel .ai-copilot-message.is-user {
+  width: fit-content;
+  max-width: 92%;
+  align-self: flex-end;
+  gap: 3px;
+}
+
+.ai-copilot-panel .ai-copilot-message-role {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+}
+
+.ai-copilot-panel .ai-copilot-message.is-user .ai-copilot-message-role {
+  display: none;
+}
+
+.ai-copilot-panel .ai-copilot-message.is-user .ai-copilot-message-plain {
+  padding: 10px 13px;
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 55%, transparent);
+  border-radius: 16px 16px 5px 16px;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--surface-active) 38%, var(--surface-inset));
+}
+
+.ai-copilot-panel .ai-copilot-message-markdown {
+  padding: 1px 0;
+  border: 0;
+  border-radius: 0;
+  color: var(--text-primary);
+  background: transparent;
+}
+
+.ai-copilot-panel .ai-copilot-message-markdown pre {
+  border-color: var(--border-subtle);
+  border-radius: 10px;
+}
+
+.ai-copilot-panel .ai-copilot-message-actions {
+  min-height: 26px;
+  gap: 4px;
+}
+
+.ai-copilot-panel .ai-copilot-message-actions :is(.ai-copilot-copy-button, .ai-copilot-message-delete-button) {
+  width: 26px;
+  height: 26px;
+  flex-basis: 26px;
+  border-radius: 7px;
+  opacity: 0.75;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease,
+    opacity 140ms ease,
+    transform 100ms ease;
+}
+
+.ai-copilot-panel .ai-copilot-message-actions button:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.ai-copilot-panel .ai-copilot-message-actions button:focus-visible,
+.ai-conversation-step-summary:focus-visible,
+.ai-conversation-scroll-latest:focus-visible {
+  outline: 2px solid var(--focus-outline);
+  outline-offset: 2px;
+}
+
+.ai-copilot-panel .ai-conversation-step {
+  gap: 0;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 65%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-inset) 60%, transparent);
+}
+
+.ai-copilot-panel .ai-conversation-step.needs-approval {
+  border-color: color-mix(in srgb, var(--status-warning) 45%, var(--border-subtle));
+  background: color-mix(in srgb, var(--status-warning-bg) 25%, var(--surface-inset));
+}
+
+.ai-copilot-panel .ai-conversation-step.needs-attention {
+  border-color: color-mix(in srgb, var(--status-danger) 35%, var(--border-subtle));
+}
+
+.ai-copilot-panel .ai-conversation-step-header {
+  flex-wrap: nowrap;
+  gap: 6px;
+  padding: 4px 8px 4px 4px;
+}
+
+.ai-conversation-step-summary {
+  display: flex;
+  min-width: 0;
+  min-height: 36px;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 7px;
+  color: var(--text-muted);
+  background: transparent;
+  font: inherit;
+  text-align: left;
+}
+
+button.ai-conversation-step-summary {
+  cursor: pointer;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease,
+    transform 100ms ease;
+}
+
+button.ai-conversation-step-summary:hover {
+  color: var(--text-primary);
+  background: var(--action-ghost-hover);
+}
+
+button.ai-conversation-step-summary:active {
+  transform: scale(0.985);
+}
+
+.ai-conversation-step-summary > .ai-icon {
+  flex: 0 0 auto;
+}
+
+.ai-conversation-step.needs-approval .ai-conversation-step-summary > .ai-icon {
+  color: var(--status-warning);
+}
+
+.ai-conversation-step.needs-attention .ai-conversation-step-summary > .ai-icon {
+  color: var(--status-danger);
+}
+
+.ai-conversation-step-label {
+  display: grid;
+  min-width: 0;
+  flex: 1 1 auto;
+  gap: 1px;
+}
+
+.ai-conversation-step-label strong {
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+}
+
+.ai-conversation-step-label code {
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-conversation-step-chevron {
+  transition: transform 160ms ease;
+}
+
+.ai-conversation-step-summary[aria-expanded='true'] .ai-conversation-step-chevron {
+  transform: rotate(90deg);
+}
+
+.ai-copilot-panel .ai-conversation-step-header .ai-copilot-command-risk {
+  flex: 0 0 auto;
+  padding: 3px 6px;
+  font-weight: 500;
+}
+
+.ai-conversation-step-details {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid var(--border-subtle);
+  animation: ai-conversation-appear 140ms ease-out;
+}
+
+.ai-conversation-step-details[hidden] {
+  display: none;
+}
+
+.ai-copilot-panel .ai-conversation-step-details p {
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+
+.ai-copilot-panel .ai-conversation-step .ai-copilot-tool-approval > small {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.ai-copilot-panel .ai-conversation-step .ai-copilot-tool-approval-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ai-copilot-panel .ai-conversation-step .ai-copilot-tool-approval-actions button {
+  width: auto;
+  flex: 1 1 auto;
+  border-radius: 8px;
+}
+
+.ai-copilot-panel .ai-copilot-streaming-indicator {
+  min-height: 28px;
+  gap: 8px;
+  color: var(--text-muted);
+}
+
+.ai-copilot-panel .ai-copilot-streaming-indicator .ai-icon,
+.ai-conversation-step.is-active-request:is(.is-pending, .is-running):not(.needs-approval)
+  .ai-conversation-step-summary
+  > .ai-icon:first-child {
+  color: var(--text-muted);
+  animation: ai-conversation-working 1.2s linear infinite;
+}
+
+.ai-copilot-panel .ai-copilot-streaming-indicator.is-awaiting-approval .ai-icon {
+  color: var(--status-warning);
+  animation: none;
+}
+
+.ai-copilot-panel .ai-copilot-stream-error {
+  align-items: flex-start;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border-radius: 12px;
+  line-height: 1.6;
+}
+
+.ai-copilot-panel .ai-copilot-stream-error button {
+  min-height: 28px;
+  border-radius: 7px;
+}
+
+.ai-conversation-scroll-latest {
+  position: absolute;
+  z-index: 2;
+  right: 16px;
+  bottom: 12px;
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  color: var(--text-primary);
+  background: var(--surface-elevated);
+  box-shadow: var(--control-shadow);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  animation: ai-conversation-appear 160ms ease-out;
+  transition:
+    background-color 140ms ease,
+    transform 100ms ease;
+}
+
+.ai-conversation-scroll-latest > .ai-icon {
+  transform: rotate(180deg);
+}
+
+.ai-conversation-scroll-latest:hover {
+  background: var(--action-secondary-hover);
+}
+
+.ai-conversation-scroll-latest:active {
+  transform: scale(0.96);
+}
+
+@keyframes ai-conversation-appear {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ai-conversation-working {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@container ai-copilot (max-width: 380px) {
+  .ai-copilot-panel .ai-copilot-message-viewport {
+    padding-inline: 12px;
+  }
+
+  .ai-copilot-panel .ai-copilot-message.is-user {
+    max-width: 96%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-copilot-panel :is(.ai-copilot-message, .ai-copilot-streaming-indicator .ai-icon),
+  .ai-conversation-step-details,
+  .ai-conversation-step.is-active-request:is(.is-pending, .is-running):not(.needs-approval)
+    .ai-conversation-step-summary
+    > .ai-icon:first-child,
+  .ai-conversation-scroll-latest {
+    animation: none;
+  }
+
+  .ai-copilot-panel .ai-copilot-message-actions :is(.ai-copilot-copy-button, .ai-copilot-message-delete-button),
+  .ai-conversation-step-summary,
+  .ai-conversation-step-chevron,
+  .ai-conversation-scroll-latest {
+    transition: none;
+  }
+
+  .ai-copilot-panel .ai-copilot-message-actions button:active:not(:disabled),
+  button.ai-conversation-step-summary:active,
+  .ai-conversation-scroll-latest:active {
+    transform: none;
+  }
+}

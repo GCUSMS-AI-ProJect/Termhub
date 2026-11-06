@@ -1,0 +1,151 @@
+---
+name: transterm-cli
+description: Use transterm's one-shot CLI, persistent CLI JSONL bridge, or MCP bridge from an external AI Agent while the transterm desktop app is running. Read this Skill whenever an AI Agent or automation needs to discover connections, execute remote actions, transfer files, or use the transterm bridge safely.
+---
+
+# transterm CLI Skill
+
+This document explains how end users integrate with transterm. It applies to version 2.2.7 and later. For the complete set of command arguments, use the `--help` output from the installed version.
+
+## Choose an integration mode
+
+| Use case                                     | How to start              | Process behavior                                                |
+| -------------------------------------------- | ------------------------- | --------------------------------------------------------------- |
+| Default integration for an external AI Agent | `transterm cli --jsonl`   | Starts once, keeps stdin/stdout open, and handles many requests |
+| MCP-capable client                           | `transterm mcp`           | Starts once and keeps an MCP stdio session                      |
+| Manual use or shell scripts                  | `transterm cli <command>` | Starts a short-lived CLI process for each call                  |
+
+There is no separate `transterm agent` command. AI Agents use `transterm cli --jsonl`; do not restart the one-shot CLI for every action.
+
+Within each persistent `mcp` or `cli --jsonl` process, transterm creates one authenticated local bridge session and shares it across all workers. Requests are multiplexed by an internal request ID, so progress and out-of-order responses return to the correct caller without opening a new local TCP connection for every action. A dead session is recovered by one bounded recovery flow; in-flight requests are not replayed, which prevents deployments or other side effects from running twice. If recovery is unavailable, the client returns a retryable bridge error; retry the same request automatically only when its `errorInfo.safeToRetry` is `true`, otherwise inspect state first.
+
+## Agent contract: follow returned state
+
+The transport and the remote-session workflow are separate contracts. The MCP server returns the global rules in `initialize.instructions` and repeats the relevant rules in each `tools/list` description. MCP Agents do not need to manage the private bridge session or its request IDs. The CLI has the same contract in this Skill, in `transterm cli --help`, and in the read-only `transterm cli agent-contract` command. If an Agent is unsure, it should read the contract before performing a remote action.
+
+The following rules are mandatory for both MCP and CLI JSONL:
+
+1. Open one session, save `sessionId`/`tabId`, and reuse that `tabId`. `open_connection` is not a per-command connect operation.
+2. If `open_connection` returns `connectionStatus=connecting` or a bounded wait times out, call `wait_for_connection` with the same `connectionOperationId`; never open a second connection. If the open response is lost during a bridge error, inspect the session state before opening anything else.
+3. Use `execute_remote_command` for a short bounded command. Use `start_remote_command` exactly once for a deployment, build, migration, or other long job.
+4. Save the long-job `commandId`. Read with the same `tabId` and `commandId`, starting at `offset=0` and then using exactly the previous `nextOffset`. When `running=false`, collect the final output and close the command.
+5. A read timeout can be retried with the same read arguments. A timeout or bridge disconnect during a mutating action does not prove that the action was not accepted; inspect state before retrying and never blindly replay it.
+6. Prefer the returned `agent.next` action and arguments. For MCP use `next.mcpTool`; for CLI JSONL use `next.cliJsonlAction`; use `next.cliCommand` only with one-shot shell syntax. In errors, `retryable` describes transport retryability; `safeToRetry` describes whether repeating the action is safe and worthwhile. `safeToRetry=false` wins.
+
+The key successful responses contain explicit continuation metadata. A connected `open` response tells the Agent to reuse the returned tab. A `start_remote_command` response contains an `agent.next` read request. A background-command read contains the next read request while `running=true`, or the close request after completion. This metadata is advisory workflow guidance; transterm still enforces argument validation, access scope, approval, and command ownership in the desktop process.
+
+The read-only contract can also be requested directly. In MCP call `transterm_get_agent_contract`; in CLI JSONL send the `get_agent_contract` action; for a shell-readable response use:
+
+```text
+transterm cli agent-contract
+```
+
+It returns the same machine-readable workflow rules for clients that cannot load this Skill.
+
+The transterm desktop app must already be running. The CLI and MCP are local bridge clients that connect to the running transterm app; they are not standalone SSH clients, do not export connection credentials, and do not automatically change external-client configuration. CLI arguments are processed before the Tauri GUI initializes, so a CLI call does not open another transterm window. A one-shot CLI call still creates its own short-lived operating-system process; only JSONL mode reuses the same CLI process.
+
+Connections opened through the CLI or MCP remain owned by the transterm app's SSH/SFTP worker. Background mode does not place connections in the top tab bar; instead, they appear on the GUI's **Background Sessions** page. The session ID in that list is the `tabId` to use in later CLI or MCP requests. Selecting **Open Session** or calling `transterm_activate_session` reuses the original worker and returns it to a visible tab without reconnecting.
+
+The Background Sessions list labels each session's source as `CLI` or `MCP`. After a session is opened in the workspace, the same source label remains next to its session ID at the bottom. Sessions created in the regular GUI do not display an external source.
+
+Prompts for external actions that require user confirmation also show the request source, `CLI` or `MCP`. This source is only for identification and auditing; the CLI and MCP share the same permission policy.
+
+You can move a visible CLI or MCP session back to the background by selecting the hide control beside its session ID at the bottom. This only changes where the session is displayed; it does not disconnect. You can open it again from **Background Sessions** later.
+
+## AI Agent: persistent JSONL
+
+Start it once:
+
+```text
+transterm cli --jsonl
+```
+
+Then send one JSON object per line to stdin and read one result per line from stdout:
+
+```json
+{"id":"request-1","action":"list_connections","params":{}}
+{"id":"request-2","action":"get_session_context","params":{"profile_id":"PROFILE_ID"}}
+```
+
+Example successful result:
+
+```json
+{ "id": "request-1", "ok": true, "result": { "connections": [] } }
+```
+
+For a machine-readable workflow description, send this request through the same persistent process:
+
+```json
+{ "id": "contract-1", "action": "get_agent_contract", "params": {} }
+```
+
+For MCP, read the structured tool value at `result.structuredContent`; for CLI JSONL, read the successful value at `response.result`. Successful connection and long-command results may include an `agent` object with an explicit `next` action. Follow its tool/action and arguments, preserving every returned ID and offset. JSONL failures keep the human-readable `error` string and may also include `errorInfo`; when `errorInfo.safeToRetry` is `false`, do not repeat the request. If `errorInfo.outcome` is `unknown`, first inspect the remote state because the action may already have been accepted.
+
+While waiting for the user to confirm an action or enter a password in the main transterm window, you may first receive a progress line with the same request ID, followed by the result line. To cancel a request that is still waiting:
+
+```json
+{ "id": "cancel-1", "action": "cancel_request", "params": { "request_id": "request-1" } }
+```
+
+Cancellation only stops the CLI JSONL wait and any later output; it does not roll back remote actions that transterm has already accepted or started. A request ID must be a non-empty string or number, and it cannot be reused by another active request. Each input line is limited to 2 MiB. The process handles up to eight requests concurrently and queues up to 32 more; when the queue is full it returns `TRANSTERM_REQUEST_QUEUE_FULL` so the Agent can retry with backoff. Closing stdin is treated as client disconnect: pending bridge requests are cancelled before the process exits.
+
+## Long-running remote commands
+
+Do not keep a single `exec` request open for deployments, image builds, migrations, or `docker compose` operations. Start a background command once, then poll its bounded output:
+
+```text
+transterm cli start-remote-command --tab-id TAB_ID --command "./deploy.sh" --timeout-ms 1800000
+transterm cli read-remote-command --tab-id TAB_ID --command-id COMMAND_ID --offset 0 --wait-ms 10000
+transterm cli read-remote-command --tab-id TAB_ID --command-id COMMAND_ID --offset NEXT_OFFSET --wait-ms 10000
+```
+
+The start result contains `commandId` and the read result contains `nextOffset`. Continue from that offset; never start the same deployment again merely because a read request timed out. Use `transterm cli remote-commands --tab-id TAB_ID` to recover retained command IDs after an Agent context loss. Use `transterm cli terminate-remote-command` only when the user asks to stop the job, and `transterm cli close-remote-command` after the output and final status have been collected.
+
+Background commands stay in the transterm worker and are scoped to the originating `tabId`. Their output is bounded and retained for a limited period. Termination waits briefly for the remote channel to report its final state, but a command can remain `running` when the server does not close the channel promptly; this is not a claim that the remote process has already exited.
+
+A tab can have at most five active background commands. SSH exec channel creation retries up to three times with a short bounded backoff, but only the channel-open handshake is retried; once the server has accepted `exec`, transterm never resubmits that command on a replacement channel.
+
+## Manual CLI
+
+Show help:
+
+```text
+transterm cli --help
+```
+
+Common one-shot calls:
+
+```text
+transterm cli connections
+transterm cli open --profile-id PROFILE_ID --wait-for-ready true
+transterm cli sessions --profile-id PROFILE_ID
+transterm cli directory --tab-id TAB_ID --path /
+transterm cli read --tab-id TAB_ID --path /etc/hostname
+transterm cli exec --tab-id TAB_ID --command "uname -a"
+transterm cli remote-commands --tab-id TAB_ID
+```
+
+By default, CLI `open` creates a background session and returns a reusable session ID in `sessionId` (while retaining `tabId` for compatibility with existing requests). Pass `--execution-mode visible-terminal` when the user explicitly needs an interactive visible terminal; activate that session before sending visible commands. Otherwise, to view a background session in the top tab bar, open it from the GUI's **Background Sessions** page or call `transterm_activate_session` through MCP.
+
+The one-shot CLI is intended for manual debugging and shell scripts. Every call creates a new CLI process and exits when the call finishes; it does not reuse a CLI process and should not be used by an AI Agent for per-action calls.
+
+## Permissions and confirmation
+
+MCP, the one-shot CLI, and CLI JSONL share the connection scope, operation permissions, and security checks configured in transterm:
+
+- **Read-only**: Allows only queries for connections, sessions, directories, files, and transfer status. It does not run commands or make changes.
+- **Basic safe operations**: Queries and ordinary commands that transterm identifies as read-only run automatically. Changes, dangerous or privileged commands, session changes, file operations, transfers, tunnels, and unknown operations require confirmation in the main transterm window.
+- **Full access**: Skips per-operation confirmation, including for `sudo` and `su`. Connection allowlists, protocol capabilities, security checks, and any required password entry still apply.
+
+The `requiresApproval` field in a CLI JSONL request cannot disable desktop approval. Passwords are never included in command text, logs, or results. When a one-shot CLI call needs a password, prefer a stdin option such as `--sudo-password-stdin` or `--su-password-stdin`.
+
+## Remote-command boundaries
+
+- Commands on ordinary SSH servers use a separate non-interactive exec channel and do not write to the visible terminal.
+- Network-device commands send a single command through the visible raw terminal. Results may include the command echo and prompt. Background exec, `cwd`, `sudo`, and `su` are not available.
+- MFA, installer confirmation, REPLs, and other operations that need ongoing interactive input must be completed in the visible SSH terminal. Open the corresponding background session or call `transterm_activate_session` before continuing. Do not automatically retry when transterm returns `REMOTE_INTERACTIVE_INPUT_REQUIRED`.
+- `sudo` and `su` may wait for a secure password entry in the main transterm window. The original request resumes after the user provides it.
+
+## Client configuration
+
+External clients should register `transterm mcp` or `transterm cli --jsonl` and reuse the started stdio process. transterm only provides a copyable registration command in Settings; it does not start external clients or rewrite their configuration files automatically.

@@ -1,0 +1,697 @@
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
+import Editor, { loader, type Monaco, type OnMount } from '@monaco-editor/react'
+import OpenCC from 'opencc-js'
+import * as monacoEditor from 'monaco-editor'
+import type { FileContentSnapshot, RemoteSystemPlatform } from '@transterm/core'
+import { isDarkTheme, type ThemeMode } from '../../app/theme-config'
+import { t } from '../../i18n'
+import { getConfiguredMonoFontFamily, observeCanvasTextMetrics } from '../../app/font-metrics'
+import { CloseButton } from '../common/close-button'
+import { AppIcon } from '../common/app-icon'
+import { StableButtonContent, StableButtonLabel } from '../common/stable-button-content'
+import { loadFileEditorModel } from './file-editor-model'
+import { FileEditorRecovery } from './file-editor-recovery'
+import {
+  EDITOR_ENCODINGS,
+  getEditorEncodingLabel,
+  sortEditorLanguages,
+  type EditorLanguageOption
+} from './file-editor-config'
+
+const toTraditional = OpenCC.Converter({ from: 'cn', to: 'tw' })
+const toSimplified = OpenCC.Converter({ from: 'tw', to: 'cn' })
+
+// Monaco loader defaults to a CDN, which gets blocked by Electron CSP and leaves the editor
+// stuck on its built-in loading state. Use the bundled npm package instead.
+loader.config({ monaco: monacoEditor })
+
+type EditorInstance = Parameters<OnMount>[0]
+type EditorMenu = 'file' | 'edit' | 'search' | 'preferences' | 'encoding' | 'language' | 'line-ending'
+const MONACO_DARK_THEME = 'transterm-default-dark'
+const WHITESPACE_STATE_KEY = 'file-editor.show-whitespace'
+
+function resolveCssColorToHex(cssValue: string): string | null {
+  const trimmed = cssValue.trim()
+  if (!trimmed) return null
+  if (/^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(trimmed)) {
+    return trimmed
+  }
+  const varMatch = trimmed.match(/^var\(\s*(--[a-zA-Z0-9_-]+)/)
+  if (varMatch) {
+    const resolved = window.getComputedStyle(document.documentElement).getPropertyValue(varMatch[1]).trim()
+    if (resolved) {
+      const hex = resolveCssColorToHex(resolved)
+      if (hex) return hex
+    }
+  }
+  if (typeof document !== 'undefined') {
+    const probe = document.createElement('div')
+    probe.style.color = trimmed
+    probe.style.display = 'none'
+    document.documentElement.appendChild(probe)
+    const computedColor = window.getComputedStyle(probe).color
+    probe.remove()
+    const rgbMatch = computedColor.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?\s*\)$/)
+    if (rgbMatch) {
+      const r = Math.min(255, Math.max(0, parseInt(rgbMatch[1], 10)))
+        .toString(16)
+        .padStart(2, '0')
+      const g = Math.min(255, Math.max(0, parseInt(rgbMatch[2], 10)))
+        .toString(16)
+        .padStart(2, '0')
+      const b = Math.min(255, Math.max(0, parseInt(rgbMatch[3], 10)))
+        .toString(16)
+        .padStart(2, '0')
+      if (rgbMatch[4] !== undefined) {
+        const a = Math.min(255, Math.max(0, Math.round(parseFloat(rgbMatch[4]) * 255)))
+          .toString(16)
+          .padStart(2, '0')
+        return `#${r}${g}${b}${a}`
+      }
+      return `#${r}${g}${b}`
+    }
+  }
+  return null
+}
+
+function readMonacoColor(varName: string, fallbackVarName: string, defaultHex: string): string {
+  const styles = window.getComputedStyle(document.documentElement)
+  const val = styles.getPropertyValue(varName)
+  const resolved = resolveCssColorToHex(val)
+  if (resolved) return resolved
+
+  const fallbackVal = styles.getPropertyValue(fallbackVarName)
+  const fallbackResolved = resolveCssColorToHex(fallbackVal)
+  if (fallbackResolved) return fallbackResolved
+
+  return defaultHex
+}
+
+function defineTranstermMonacoTheme(monaco: Monaco) {
+  monaco.editor.defineTheme(MONACO_DARK_THEME, {
+    base: 'vs-dark',
+    inherit: true,
+    rules: [],
+    colors: {
+      'editor.background': readMonacoColor('--monaco-editor-bg', '--terminal-bg', '#111316'),
+      'editor.foreground': readMonacoColor('--monaco-editor-foreground', '--terminal-text', '#d6dde7'),
+      'editorLineNumber.foreground': readMonacoColor('--monaco-line-number', '--text-soft', '#5f6875'),
+      'editorLineNumber.activeForeground': readMonacoColor('--monaco-line-number-active', '--text-muted', '#9faab8'),
+      'editorCursor.foreground': readMonacoColor('--monaco-cursor', '--accent-highlight', '#7cc7ff'),
+      'editor.selectionBackground': readMonacoColor('--monaco-selection', '--selection-bg', '#21466b'),
+      'editor.inactiveSelectionBackground': readMonacoColor('--monaco-inactive-selection', '--selection-bg', '#1a354d'),
+      'editor.lineHighlightBackground': readMonacoColor('--monaco-line-highlight', '--surface-inset', '#161b22'),
+      'editorIndentGuide.background1': readMonacoColor('--monaco-indent-guide', '--border-light', '#1f2630'),
+      'editorIndentGuide.activeBackground1': readMonacoColor('--monaco-indent-guide-active', '--border-dark', '#344150')
+    }
+  })
+}
+
+export function FileEditorModal({
+  errorMessage,
+  file,
+  isBusy,
+  isDirty,
+  isSaving: isSavingRequest,
+  onClose,
+  onDraftChange,
+  onReloadWithEncoding,
+  onSave,
+  remotePlatform,
+  standalone = false,
+  themeMode
+}: {
+  errorMessage: string | null
+  file: FileContentSnapshot
+  isBusy: boolean
+  isDirty?: boolean
+  isSaving: boolean
+  onClose(): void
+  onDraftChange?(content: string, encoding: string): void
+  onReloadWithEncoding(encoding: string): void
+  onSave(content: string, encoding: string, resolution?: 'replace-external'): void
+  remotePlatform?: RemoteSystemPlatform
+  standalone?: boolean
+  themeMode: ThemeMode
+}) {
+  const [content, setContent] = useState(file.content)
+  const [isRecovering, setIsRecovering] = useState(false)
+  const isSaving = isSavingRequest || isRecovering
+  const [encoding, setEncoding] = useState(file.encoding ?? 'utf-8')
+  const [language, setLanguage] = useState('plaintext')
+  const [wordWrap, setWordWrap] = useState(true)
+  const [showMinimap, setShowMinimap] = useState(false)
+  const [showLineNumbers, setShowLineNumbers] = useState(true)
+  const [showWhitespace, setShowWhitespace] = useState(false)
+  const [lineEnding, setLineEnding] = useState('\n')
+  const [cursorLine, setCursorLine] = useState(1)
+  const [cursorColumn, setCursorColumn] = useState(1)
+  const [openMenu, setOpenMenu] = useState<EditorMenu | null>(null)
+  const [languages, setLanguages] = useState<EditorLanguageOption[]>([{ id: 'plaintext', label: 'Plain Text' }])
+
+  const editorRef = useRef<EditorInstance | null>(null)
+  const monacoRef = useRef<Monaco | null>(null)
+  const disposeCanvasTextMetricsRef = useRef<(() => void) | null>(null)
+  const encodingRef = useRef(encoding)
+  const fileRef = useRef(file)
+  const remotePlatformRef = useRef(remotePlatform)
+  const whitespaceChangedRef = useRef(false)
+  const shellRef = useRef<HTMLDivElement | null>(null)
+  fileRef.current = file
+  remotePlatformRef.current = remotePlatform
+
+  useEffect(() => {
+    const model = editorRef.current?.getModel()
+    if (model) {
+      loadFileEditorModel(model, fileRef.current, remotePlatformRef.current)
+      setLineEnding(model.getEOL())
+    }
+    setContent(model?.getValue() ?? file.content)
+    setEncoding(file.encoding ?? 'utf-8')
+  }, [file.content, file.encoding, file.path])
+
+  useEffect(() => {
+    let disposed = false
+    void window.transterm
+      ?.getUiStateItem(WHITESPACE_STATE_KEY)
+      .then((value) => {
+        if (!disposed && !whitespaceChangedRef.current) setShowWhitespace(value === 'true')
+      })
+      .catch((error: unknown) => console.warn('[transterm] Load editor whitespace preference', error))
+    return () => {
+      disposed = true
+    }
+  }, [])
+
+  useEffect(() => {
+    encodingRef.current = encoding
+  }, [encoding])
+
+  useEffect(() => {
+    return () => {
+      disposeCanvasTextMetricsRef.current?.()
+      disposeCanvasTextMetricsRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null
+      if (!target) {
+        return
+      }
+
+      const clickedInsideMenu = target.closest('[data-file-editor-menu-scope="true"]')
+      if (!clickedInsideMenu) {
+        setOpenMenu(null)
+      }
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && openMenu) {
+        setOpenMenu(null)
+      }
+    }
+
+    window.addEventListener('pointerdown', onPointerDown, true)
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('pointerdown', onPointerDown, true)
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [openMenu])
+
+  useEffect(() => {
+    onDraftChange?.(content, encoding)
+  }, [content, encoding, onDraftChange])
+
+  const effectiveIsDirty =
+    isDirty !== undefined ? isDirty : content !== file.content || encoding !== (file.encoding ?? 'utf-8')
+
+  const lineCount = useMemo(() => (content.match(/\n/g)?.length ?? 0) + 1, [content])
+  const characterCount = content.length
+  const currentEncoding = getEditorEncodingLabel(encoding)
+  const currentLanguage = languages.find((option) => option.id === language)?.label ?? language
+  const handleMount: OnMount = (editor, monaco) => {
+    disposeCanvasTextMetricsRef.current?.()
+    editorRef.current = editor
+    monacoRef.current = monaco
+    const model = editor.getModel()
+    if (model) {
+      loadFileEditorModel(model, fileRef.current, remotePlatformRef.current)
+      setContent(model.getValue())
+      setLineEnding(model.getEOL())
+    }
+    editor.onDidChangeModelContent(() => {
+      setContent(editor.getValue())
+      setLineEnding(editor.getModel()?.getEOL() ?? '\n')
+    })
+    setLanguages(sortEditorLanguages(monaco.languages.getLanguages()))
+
+    defineTranstermMonacoTheme(monaco)
+    monaco.editor.setTheme(isDarkTheme(themeMode) ? MONACO_DARK_THEME : 'vs')
+    setLanguage(editor.getModel()?.getLanguageId() ?? 'plaintext')
+
+    // Monaco caches both font widths and line rendering. Unlike normal DOM
+    // text it must be remeasured after local fonts or WebView DPI become ready.
+    disposeCanvasTextMetricsRef.current = observeCanvasTextMetrics((fontFamily) => {
+      editor.updateOptions({ fontFamily })
+      monaco.editor.remeasureFonts()
+      editor.layout()
+    })
+
+    const position = editor.getPosition()
+    if (position) {
+      setCursorLine(position.lineNumber)
+      setCursorColumn(position.column)
+    }
+
+    editor.onDidChangeCursorPosition((event) => {
+      setCursorLine(event.position.lineNumber)
+      setCursorColumn(event.position.column)
+    })
+
+    editor.onDidChangeModelLanguage(() => {
+      setLanguage(editor.getModel()?.getLanguageId() ?? 'plaintext')
+    })
+
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+      onSave(editor.getValue(), encodingRef.current)
+    })
+
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyF, () => {
+      void runEditorAction('actions.find')
+    })
+  }
+
+  useEffect(() => {
+    if (!monacoRef.current) {
+      return
+    }
+    defineTranstermMonacoTheme(monacoRef.current)
+    monacoRef.current.editor.setTheme(isDarkTheme(themeMode) ? MONACO_DARK_THEME : 'vs')
+  }, [themeMode])
+
+  useEffect(() => {
+    const editor = editorRef.current
+    if (!editor) {
+      return
+    }
+    editor.updateOptions({
+      fixedOverflowWidgets: true,
+      lineNumbers: showLineNumbers ? 'on' : 'off',
+      minimap: { enabled: showMinimap },
+      renderWhitespace: showWhitespace ? 'all' : 'none',
+      wordWrap: wordWrap ? 'on' : 'off'
+    })
+  }, [showLineNumbers, showMinimap, showWhitespace, wordWrap])
+
+  const toggleWhitespace = () => {
+    const next = !showWhitespace
+    whitespaceChangedRef.current = true
+    setShowWhitespace(next)
+    void window.transterm
+      ?.setUiStateItem(WHITESPACE_STATE_KEY, String(next))
+      .catch((error: unknown) => console.warn('[transterm] Save editor whitespace preference', error))
+  }
+
+  const changeLineEnding = (ending: monacoEditor.editor.EndOfLineSequence) => {
+    const editor = editorRef.current
+    if (!editor || isBusy || isSaving) return
+    editor.pushUndoStop()
+    editor.getModel()?.pushEOL(ending)
+    editor.pushUndoStop()
+    editor.focus()
+    setOpenMenu(null)
+  }
+
+  const runEditorAction = async (actionId: string) => {
+    const editor = editorRef.current
+    if (!editor) {
+      return
+    }
+    editor.focus()
+    await editor.getAction(actionId)?.run()
+    setOpenMenu(null)
+  }
+
+  const updateLanguage = (nextLanguage: string) => {
+    const editor = editorRef.current
+    const model = editor?.getModel()
+    if (model && editor) {
+      monacoRef.current?.editor.setModelLanguage(model, nextLanguage)
+    }
+    setLanguage(nextLanguage)
+    setOpenMenu(null)
+  }
+
+  const convertContent = (converter: (text: string) => string) => {
+    if (isBusy || isSaving) {
+      return
+    }
+    const editor = editorRef.current
+    if (!editor) {
+      return
+    }
+
+    const model = editor.getModel()
+    const selection = editor.getSelection()
+    const selectedText = selection ? (model?.getValueInRange(selection) ?? '') : ''
+
+    if (selection && !selection.isEmpty() && selectedText) {
+      editor.executeEdits('opencc-convert', [{ range: selection, text: converter(selectedText) }])
+    } else {
+      editor.setValue(converter(editor.getValue()))
+    }
+
+    setContent(editor.getValue())
+    editor.focus()
+    setOpenMenu(null)
+  }
+
+  const handleShellClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement
+    if (!target.closest('[data-file-editor-menu-scope="true"]')) {
+      setOpenMenu(null)
+    }
+  }
+
+  const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape' && openMenu) {
+      event.stopPropagation()
+      setOpenMenu(null)
+    }
+  }
+
+  const frameClassName = `modal-card file-editor-modal ${themeMode === 'default-dark' ? 'file-editor-modal--dark' : ''} ${standalone ? 'standalone' : ''}`
+  const contentNode = (
+    <div className={frameClassName} onClick={handleShellClick} onKeyDown={handleKeyDown} ref={shellRef}>
+      <div className="modal-header" data-tauri-drag-region={standalone ? 'deep' : undefined}>
+        <div className="file-editor-title">
+          <span>{file.source === 'remote' ? t.editRemoteFile : t.editLocalFile}</span>
+          <strong>{file.name}</strong>
+          {effectiveIsDirty ? <b>{t.fileEditorUnsaved}</b> : null}
+        </div>
+        <div className="file-editor-header-actions">
+          <button
+            aria-busy={isSaving}
+            className={`file-editor-save-button ${effectiveIsDirty ? 'is-dirty' : ''} ${isSaving ? 'is-saving' : ''}`}
+            disabled={!effectiveIsDirty || isBusy || isSaving}
+            onClick={() => onSave(editorRef.current?.getValue() ?? content, encoding)}
+            type="button"
+          >
+            <StableButtonContent busy={isSaving} busyLabel={t.saving} label={t.save} />
+          </button>
+          <CloseButton disabled={isBusy || isSaving} onClick={onClose} />
+        </div>
+      </div>
+
+      <FileEditorRecovery
+        file={file}
+        content={content}
+        encoding={encoding}
+        busy={isBusy || isSaving}
+        onSave={onSave}
+        onReload={onReloadWithEncoding}
+        onRecoveryBusyChange={setIsRecovering}
+      />
+      <div className="file-editor-workspace">
+        <section className="file-editor-main">
+          <div className="file-editor-toolbar">
+            <div className="file-editor-menubar">
+              <EditorMenuButton current={openMenu} label={t.fileEditorFile} menu="file" onToggle={setOpenMenu}>
+                <MenuAction
+                  disabled={!effectiveIsDirty || isBusy || isSaving}
+                  busy={isSaving}
+                  busyLabel={t.saving}
+                  label={t.save}
+                  onClick={() => onSave(editorRef.current?.getValue() ?? content, encoding)}
+                />
+                <MenuAction
+                  disabled={effectiveIsDirty || isBusy || isSaving}
+                  label={t.fileEditorReloadEncoding}
+                  onClick={() => setOpenMenu('encoding')}
+                />
+              </EditorMenuButton>
+              <EditorMenuButton current={openMenu} label={t.edit} menu="edit" onToggle={setOpenMenu}>
+                <MenuAction label={t.fileEditorUndo} onClick={() => void runEditorAction('undo')} />
+                <MenuAction label={t.fileEditorRedo} onClick={() => void runEditorAction('redo')} />
+                <MenuSeparator />
+                <MenuAction
+                  label={t.fileEditorSelectAll}
+                  onClick={() => void runEditorAction('editor.action.selectAll')}
+                />
+                <MenuSeparator />
+                <MenuAction label={t.fileEditorToTraditional} onClick={() => convertContent(toTraditional)} />
+                <MenuAction label={t.fileEditorToSimplified} onClick={() => convertContent(toSimplified)} />
+              </EditorMenuButton>
+              <EditorMenuButton current={openMenu} label={t.fileEditorSearch} menu="search" onToggle={setOpenMenu}>
+                <MenuAction label={t.fileEditorFind} onClick={() => void runEditorAction('actions.find')} />
+                <MenuAction
+                  label={t.fileEditorReplace}
+                  onClick={() => void runEditorAction('editor.action.startFindReplaceAction')}
+                />
+                <MenuAction
+                  label={t.fileEditorGoToLine}
+                  onClick={() => void runEditorAction('editor.action.gotoLine')}
+                />
+              </EditorMenuButton>
+              <EditorMenuButton
+                current={openMenu}
+                label={t.fileEditorPreferences}
+                menu="preferences"
+                onToggle={setOpenMenu}
+              >
+                <MenuToggle
+                  label={t.fileEditorWordWrap}
+                  checked={wordWrap}
+                  onClick={() => setWordWrap((value) => !value)}
+                />
+                <MenuToggle
+                  label={t.fileEditorShowLineNumbers}
+                  checked={showLineNumbers}
+                  onClick={() => setShowLineNumbers((value) => !value)}
+                />
+                <MenuToggle
+                  label={t.fileEditorShowMinimap}
+                  checked={showMinimap}
+                  onClick={() => setShowMinimap((value) => !value)}
+                />
+                <MenuToggle label={t.fileEditorShowWhitespace} checked={showWhitespace} onClick={toggleWhitespace} />
+              </EditorMenuButton>
+            </div>
+
+            <div className="file-editor-path" title={file.path}>
+              {file.path}
+            </div>
+          </div>
+
+          {errorMessage ? <div className="modal-error">{errorMessage}</div> : null}
+
+          <div className="file-editor-body">
+            <div className="file-editor-surface">
+              <Editor
+                height="100%"
+                onChange={(value) => setContent(value ?? '')}
+                onMount={handleMount}
+                options={{
+                  automaticLayout: true,
+                  find: {
+                    addExtraSpaceOnTop: true,
+                    seedSearchStringFromSelection: 'always'
+                  },
+                  fixedOverflowWidgets: true,
+                  fontFamily: getConfiguredMonoFontFamily(),
+                  fontLigatures: true,
+                  fontSize: 13,
+                  lineHeight: 20,
+                  readOnly: isBusy || isSaving,
+                  minimap: { enabled: showMinimap },
+                  padding: { top: 14, bottom: 8 },
+                  renderLineHighlight: 'line',
+                  renderWhitespace: showWhitespace ? 'all' : 'none',
+                  roundedSelection: true,
+                  scrollBeyondLastLine: false,
+                  smoothScrolling: true,
+                  wordWrap: wordWrap ? 'on' : 'off',
+                  lineNumbers: showLineNumbers ? 'on' : 'off'
+                }}
+                path={file.path}
+                theme={isDarkTheme(themeMode) ? MONACO_DARK_THEME : 'vs'}
+                value={content}
+              />
+            </div>
+          </div>
+
+          <div className="file-editor-statusbar">
+            <span>{t.fileEditorStatusReady}</span>
+            <span>
+              {t.fileEditorLines}: {lineCount}
+            </span>
+            <span>
+              {t.fileEditorCharacters}: {characterCount}
+            </span>
+            <span>
+              {t.fileEditorCursor}: {cursorLine}:{cursorColumn}
+            </span>
+            <div className="file-editor-status-actions">
+              <StatusMenu
+                current={openMenu}
+                label={lineEnding === '\r\n' ? 'CRLF' : 'LF'}
+                menu="line-ending"
+                onToggle={setOpenMenu}
+              >
+                {(['\n', '\r\n'] as const).map((ending) => (
+                  <button
+                    className={lineEnding === ending ? 'is-active' : ''}
+                    disabled={isBusy || isSaving}
+                    key={ending}
+                    onClick={() =>
+                      changeLineEnding(
+                        ending === '\n'
+                          ? monacoEditor.editor.EndOfLineSequence.LF
+                          : monacoEditor.editor.EndOfLineSequence.CRLF
+                      )
+                    }
+                    type="button"
+                  >
+                    {ending === '\n' ? 'LF (Unix / Linux)' : 'CRLF (Windows)'}
+                  </button>
+                ))}
+              </StatusMenu>
+              <StatusMenu current={openMenu} label={currentEncoding} menu="encoding" onToggle={setOpenMenu}>
+                {EDITOR_ENCODINGS.map((option) => (
+                  <button
+                    className={option.value === encoding ? 'is-active' : ''}
+                    disabled={effectiveIsDirty || isBusy || isSaving}
+                    key={option.value}
+                    onClick={() => {
+                      onReloadWithEncoding(option.value)
+                      setOpenMenu(null)
+                    }}
+                    type="button"
+                  >
+                    {getEditorEncodingLabel(option.value)}
+                  </button>
+                ))}
+              </StatusMenu>
+              <StatusMenu current={openMenu} label={currentLanguage} menu="language" onToggle={setOpenMenu}>
+                {languages.map((option) => (
+                  <button
+                    className={option.id === language ? 'is-active' : ''}
+                    key={option.id}
+                    onClick={() => updateLanguage(option.id)}
+                    type="button"
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </StatusMenu>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  )
+
+  if (standalone) {
+    return <div className="standalone-shell file-editor-window">{contentNode}</div>
+  }
+
+  return <div className="modal-backdrop">{contentNode}</div>
+}
+
+function EditorMenuButton({
+  children,
+  current,
+  label,
+  menu,
+  onToggle
+}: {
+  children: ReactNode
+  current: EditorMenu | null
+  label: string
+  menu: 'file' | 'edit' | 'search' | 'preferences'
+  onToggle(menu: EditorMenu | null): void
+}) {
+  const open = current === menu
+
+  return (
+    <div className="file-editor-menu-anchor" data-file-editor-menu-scope="true">
+      <button
+        className={`file-editor-menubar-button ${open ? 'is-open' : ''}`}
+        onClick={() => onToggle(open ? null : menu)}
+        type="button"
+      >
+        {label}
+      </button>
+      {open ? <div className="file-editor-menu">{children}</div> : null}
+    </div>
+  )
+}
+
+function StatusMenu({
+  children,
+  current,
+  label,
+  menu,
+  onToggle
+}: {
+  children: ReactNode
+  current: EditorMenu | null
+  label: string
+  menu: 'encoding' | 'language' | 'line-ending'
+  onToggle(menu: EditorMenu | null): void
+}) {
+  const open = current === menu
+
+  return (
+    <div className="file-editor-status-menu" data-file-editor-menu-scope="true">
+      <button
+        className={`file-editor-status-button ${open ? 'is-open' : ''}`}
+        onClick={() => onToggle(open ? null : menu)}
+        type="button"
+      >
+        {label}
+      </button>
+      {open ? (
+        <div className="file-editor-menu file-editor-menu--wide file-editor-menu--upward file-editor-menu--align-end">
+          {children}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function MenuAction({
+  busy = false,
+  busyLabel,
+  disabled = false,
+  label,
+  onClick
+}: {
+  busy?: boolean
+  busyLabel?: string
+  disabled?: boolean
+  label: string
+  onClick(): void
+}) {
+  return (
+    <button aria-busy={busy} disabled={disabled} onClick={onClick} type="button">
+      <StableButtonLabel busy={busy} busyLabel={busyLabel} label={label} />
+    </button>
+  )
+}
+
+function MenuToggle({ checked, label, onClick }: { checked: boolean; label: string; onClick(): void }) {
+  return (
+    <button aria-pressed={checked} className="file-editor-menu-toggle" onClick={onClick} type="button">
+      <span className="file-editor-menu-check">{checked ? <AppIcon name="check" size={12} /> : null}</span>
+      {label}
+    </button>
+  )
+}
+
+function MenuSeparator() {
+  return <div className="file-editor-menu-separator" />
+}

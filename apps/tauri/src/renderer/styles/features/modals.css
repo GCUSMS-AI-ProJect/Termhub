@@ -1,0 +1,1980 @@
+/* Modern Modal Styles - Unified Design */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--modal-backdrop-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  -webkit-app-region: no-drag;
+  z-index: 100;
+}
+
+/* A fixed modal backdrop is not clipped by the rounded standalone frame on
+ * macOS/Linux. Clip the overlay itself so opening a nested modal cannot turn
+ * the four corners of the connection window into square dark wedges. */
+html[data-platform='darwin'].tauri-standalone-window .modal-backdrop,
+html[data-platform='linux'].tauri-standalone-window .modal-backdrop {
+  overflow: hidden;
+  border-radius: var(--window-corner-radius);
+}
+
+.modal-card {
+  width: min(540px, 100%);
+  padding: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  box-shadow: var(--modal-card-shadow);
+  -webkit-app-region: no-drag;
+}
+
+.modal-card button,
+.modal-card input,
+.modal-card select,
+.modal-card textarea,
+.modal-card .modal-header,
+.modal-card .form-actions {
+  -webkit-app-region: no-drag;
+}
+
+.modal-card.ssh-modal {
+  width: min(900px, 88vw);
+  min-height: 560px;
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.connection-form-window {
+  height: 100vh;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--window-corner-radius);
+  -webkit-app-region: no-drag;
+}
+
+.connection-form-window,
+.manager-window {
+  background: transparent;
+}
+
+.modal-card.ssh-modal.standalone {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0 !important;
+  border: 0;
+  border-radius: var(--window-corner-radius);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  box-shadow: none;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 36px;
+  font-weight: 600;
+  font-size: 16px;
+  margin-bottom: 20px;
+  color: var(--text-main);
+}
+
+.modal-header button {
+  background: transparent;
+  border: 1px solid var(--border-light);
+  color: var(--text-muted);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  transition: all 0.2s ease;
+}
+
+.modal-header button:hover {
+  background: var(--bg-hover);
+  border-color: var(--text-main);
+  color: var(--text-main);
+}
+
+.modal-card.manager-modal.standalone .modal-header,
+.modal-card.ssh-modal.standalone .modal-header {
+  -webkit-app-region: drag;
+}
+
+.modal-card.ssh-modal.standalone .modal-header {
+  position: absolute;
+  top: 14px;
+  left: 0;
+  width: 100%;
+  padding: 0 max(76px, env(safe-area-inset-left, 0px) + 76px) 0 max(76px, env(safe-area-inset-right, 0px) + 76px);
+  justify-content: center;
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.modal-card.ssh-modal.standalone .modal-header span {
+  pointer-events: auto;
+}
+
+.modal-card.manager-modal.standalone .modal-header button,
+.modal-card.ssh-modal.standalone .modal-header button,
+.modal-card.manager-modal.standalone .manager-toolbar,
+.modal-card.manager-modal.standalone .manager-table,
+.modal-card.manager-modal.standalone .manager-head,
+.modal-card.manager-modal.standalone .manager-body,
+.modal-card.manager-modal.standalone .manager-row,
+.modal-card.manager-modal.standalone .manager-actions,
+.modal-card.manager-modal.standalone .folder-children,
+.modal-card.ssh-modal.standalone .ssh-modal-body,
+.modal-card.ssh-modal.standalone .ssh-form-shell,
+.modal-card.ssh-modal.standalone .ssh-form-page,
+.modal-card.ssh-modal.standalone .ssh-modal-nav,
+.modal-card.ssh-modal.standalone input,
+.modal-card.ssh-modal.standalone select,
+.modal-card.ssh-modal.standalone textarea,
+.modal-card.ssh-modal.standalone button,
+.modal-card.manager-modal.standalone input,
+.modal-card.manager-modal.standalone select,
+.modal-card.manager-modal.standalone textarea,
+.modal-card.manager-modal.standalone button {
+  -webkit-app-region: no-drag;
+}
+
+.ssh-modal-body {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 0;
+  min-height: 0;
+  flex: 1;
+}
+
+.ssh-modal-nav {
+  border: none;
+  border-right: 1px solid var(--border-light);
+  background-color: var(--bg-sidebar);
+  padding: 12px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.ssh-modal-nav button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  height: 32px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+  line-height: 1;
+  padding: 0 12px;
+  font-size: var(--font-size-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ssh-modal-nav button:hover {
+  background: var(--bg-hover) !important;
+  color: var(--text-primary) !important;
+}
+
+.ssh-modal-nav button.active {
+  background: var(--bg-hover) !important;
+  color: var(--text-primary) !important;
+  font-weight: 500;
+}
+
+.ssh-form-shell {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 0;
+  padding: 16px 20px;
+}
+
+.ssh-form-page {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* A fieldset has a min-content minimum in the browser UA stylesheet. Long
+ * hints, saved paths and form controls could therefore widen the standalone
+ * connection window past its viewport. Keep every connection-form layer
+ * shrinkable so the page owns overflow instead of the window. */
+.connection-form-window,
+.modal-card.ssh-modal,
+.modal-card.ssh-modal .ssh-modal-body,
+.modal-card.ssh-modal .ssh-form-shell,
+.modal-card.ssh-modal .ssh-form-page,
+.modal-card.ssh-modal .ssh-fieldset,
+.modal-card.ssh-modal .ssh-grid,
+.modal-card.ssh-modal .form-actions {
+  min-width: 0;
+  min-inline-size: 0;
+}
+
+.connection-form-window,
+.modal-card.ssh-modal .ssh-modal-body,
+.modal-card.ssh-modal .ssh-form-shell,
+.modal-card.ssh-modal .ssh-form-page,
+.modal-card.ssh-modal .ssh-fieldset,
+.modal-card.ssh-modal .ssh-grid {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.modal-card.ssh-modal .ssh-fieldset,
+.modal-card.ssh-modal .ssh-grid > *,
+.modal-card.ssh-modal .ssh-grid label,
+.modal-card.ssh-modal .ssh-grid input:not(.selection-control),
+.modal-card.ssh-modal .ssh-grid select,
+.modal-card.ssh-modal .ssh-grid textarea,
+.modal-card.ssh-modal .ssh-grid .dropdown-select-trigger,
+.modal-card.ssh-modal .ssh-grid .ft-select-shell {
+  min-width: 0;
+  min-inline-size: 0;
+  max-width: 100%;
+}
+
+.modal-card.ssh-modal .ssh-field-hint {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.modal-card.ssh-modal .ssh-actions {
+  width: auto;
+  max-width: none;
+  min-inline-size: 0;
+  flex-wrap: nowrap;
+}
+
+.modal-card.ssh-modal .ssh-actions .connection-test-feedback {
+  flex: 1 1 0;
+  max-width: none;
+  min-width: 0;
+  min-inline-size: 0;
+}
+
+.modal-card.ssh-modal .ssh-actions .connection-test-feedback .feedback-text__message {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.modal-card.ssh-modal .ssh-actions > .flat-button,
+.modal-card.ssh-modal .ssh-actions > .primary-button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.modal-card.ssh-modal.standalone .ssh-modal-body {
+  min-height: 0;
+  overflow: clip;
+}
+
+.modal-card.ssh-modal.standalone .ssh-form-shell {
+  min-height: 0;
+  overflow: clip;
+}
+
+.modal-card.ssh-modal.standalone .ssh-form-page {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 8px;
+  padding-left: 4px;
+}
+
+.modal-card.ssh-modal .advanced-toggle-list,
+.modal-card.ssh-modal .advanced-toggle-row,
+.modal-card.ssh-modal .resource-monitoring-items-section,
+.modal-card.ssh-modal .resource-monitoring-items-header,
+.modal-card.ssh-modal .resource-monitoring-items,
+.modal-card.ssh-modal .resource-monitoring-item-card,
+.modal-card.ssh-modal .resource-monitoring-panel-row,
+.modal-card.ssh-modal .resource-monitoring-item-copy {
+  min-width: 0;
+  min-inline-size: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.modal-card.ssh-modal .resource-monitoring-items-section {
+  width: calc(100% - 22px);
+}
+
+.modal-card.ssh-modal .resource-monitoring-items-header p,
+.modal-card.ssh-modal .advanced-toggle-hint,
+.modal-card.ssh-modal .resource-monitoring-panel-name {
+  min-width: 0;
+  min-inline-size: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+@media (max-width: 720px) {
+  .modal-card.ssh-modal .ssh-actions {
+    flex-wrap: wrap;
+  }
+
+  .modal-card.ssh-modal .ssh-actions .connection-test-feedback {
+    flex: 1 0 100%;
+    margin-right: 0;
+  }
+}
+
+.ssh-fieldset {
+  border: 1px solid var(--border-dark);
+  padding: 10px 10px 12px;
+}
+
+.ssh-fieldset legend {
+  padding: 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.tunnel-fieldset {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+}
+
+.tunnel-intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--status-info) 22%, var(--border-subtle));
+  border-radius: var(--radius-md, 6px);
+  background: color-mix(in srgb, var(--status-info) 7%, var(--surface-panel));
+  color: var(--text-secondary);
+}
+
+.tunnel-intro__icon {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: var(--status-info);
+}
+.tunnel-intro p {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: 1.55;
+}
+.tunnel-rule-list {
+  display: grid;
+  gap: 10px;
+}
+.tunnel-rule-card {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border-dark);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-card) 88%, var(--bg-hover));
+}
+.tunnel-rule-card header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.tunnel-rule-card header > div {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.tunnel-rule-card strong {
+  font-size: var(--font-size-md);
+  color: var(--text-main);
+}
+.tunnel-rule-index {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+.tunnel-rule-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.tunnel-rule-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.tunnel-rule-grid input,
+.tunnel-rule-grid .dropdown-select-trigger,
+.tunnel-rule-grid .ft-select-shell {
+  min-width: 0;
+  width: 100%;
+  height: var(--button-height-md, 36px);
+  min-height: var(--button-height-md, 36px);
+  padding: 0 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--input-bg, var(--surface-input));
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-sm);
+  font-weight: 400;
+  line-height: 1.2;
+  box-sizing: border-box;
+  transition: border-color var(--transition-normal);
+}
+
+.tunnel-rule-grid input:hover:not(:disabled),
+.tunnel-rule-grid .dropdown-select-trigger:hover:not(:disabled),
+.tunnel-rule-grid .ft-select-shell:hover:not(:has(select:disabled)) {
+  border-color: var(--border-default);
+}
+
+.tunnel-rule-grid input:focus,
+.tunnel-rule-grid .dropdown-select-trigger:focus-visible,
+.tunnel-rule-grid .ft-select-shell:focus-within {
+  outline: none;
+  border-color: var(--focus-outline);
+  box-shadow: 0 0 0 2px var(--accent-focus-ring);
+  background-color: var(--surface-input-focus);
+}
+
+.tunnel-target-host {
+  grid-column: span 2;
+}
+
+.tunnel-socks-note {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 9px;
+  min-height: 36px;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  border-left: 2px solid var(--border-subtle);
+}
+
+.tunnel-socks-note .material-symbols-outlined {
+  font-size: 16px;
+}
+
+.tunnel-autostart {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+.tunnel-remove-button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-muted);
+}
+.tunnel-remove-button:hover {
+  border-color: var(--danger-border);
+  background: var(--danger-surface);
+  color: var(--danger-text);
+}
+.tunnel-remove-button .material-symbols-outlined {
+  font-size: 17px;
+}
+.tunnel-add-button {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: var(--button-font-size-regular);
+  font-weight: 500;
+  line-height: var(--button-line-height);
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+.tunnel-add-button:hover {
+  border-color: var(--border-light);
+  background: var(--bg-active);
+  color: var(--text-main);
+}
+.tunnel-add-button .material-symbols-outlined {
+  font-size: 16px;
+}
+
+/* ==========================================================================
+   Network & Proxy Settings (ConnectionNetworkSection)
+   ========================================================================== */
+
+.network-form-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.network-overview-tip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 13px;
+  border: 1px solid color-mix(in srgb, var(--status-info) 22%, var(--border-subtle));
+  border-radius: var(--radius-md, 8px);
+  background: color-mix(in srgb, var(--status-info) 7%, var(--surface-panel));
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.network-overview-tip__icon {
+  flex: 0 0 auto;
+  color: var(--status-info);
+}
+
+.network-overview-tip__text {
+  margin: 0;
+}
+
+.network-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 2px 2px;
+}
+
+.network-setting-row {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+}
+
+.network-setting-row__label {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.network-setting-row__control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.network-setting-row__control .ft-select-shell,
+.network-setting-row__control .dropdown-select-trigger {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+}
+
+.network-create-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm, 4px);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.network-routing-modes {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: var(--radius-md, 6px);
+  background: var(--surface-canvas, var(--bg-hover));
+  border: 1px solid var(--border-subtle);
+  gap: 2px;
+}
+
+.network-routing-modes button {
+  min-width: 80px;
+  height: 28px;
+  border: 0;
+  border-radius: calc(var(--radius-md, 6px) - 2px);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  padding: 0 12px;
+  transition: all 0.15s ease;
+}
+
+.network-routing-modes button:hover {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+
+.network-routing-modes button.is-active {
+  background: var(--action-primary-bg);
+  color: var(--action-primary-text);
+  box-shadow: var(--control-shadow);
+}
+
+.network-routing-modes button.is-active:hover {
+  background: var(--action-primary-hover);
+}
+
+.network-setting-subgroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border-subtle);
+}
+
+.network-field-hint {
+  margin: 0;
+  padding-left: 102px;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.network-field-hint--subtle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.network-field-hint__icon {
+  flex: 0 0 auto;
+  color: var(--status-info);
+}
+
+.network-field-hint--warning {
+  color: var(--status-warning);
+}
+
+/* macOS keeps the native menu; explicitly size and inset this select so its
+   trigger and native option sheet do not inherit the modal's larger text. */
+.network-select-control,
+.network-select-control select,
+.network-routing-select,
+.network-routing-select select {
+  font-size: var(--font-size-sm) !important;
+}
+
+.network-select-control select,
+.network-routing-select select {
+  min-height: 30px;
+  padding-left: 10px !important;
+}
+
+.network-select-control.dropdown-select-trigger,
+.network-routing-select.dropdown-select-trigger {
+  min-height: 30px;
+}
+
+.proxy-custom-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+  margin-top: 4px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md, 6px);
+  background: color-mix(in srgb, var(--surface-canvas) 50%, transparent);
+  border: 1px solid var(--border-subtle);
+}
+
+.proxy-custom-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
+.proxy-custom-grid label.span-2 {
+  grid-column: 1 / -1;
+}
+
+.proxy-custom-grid input,
+.proxy-custom-grid .ft-select-shell,
+.proxy-custom-grid .dropdown-select-trigger {
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--button-height-md, 36px);
+  min-height: var(--button-height-md, 36px);
+  padding: 0 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--input-bg, var(--surface-input));
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-sm);
+  font-weight: 400;
+  line-height: 1.2;
+  transition: border-color var(--transition-normal);
+}
+
+.proxy-custom-grid input:hover:not(:disabled),
+.proxy-custom-grid .dropdown-select-trigger:hover:not(:disabled),
+.proxy-custom-grid .ft-select-shell:hover:not(:has(select:disabled)) {
+  border-color: var(--border-default);
+}
+
+.proxy-custom-grid input:focus,
+.proxy-custom-grid .dropdown-select-trigger:focus-visible,
+.proxy-custom-grid .ft-select-shell:focus-within {
+  outline: none;
+  border-color: var(--focus-outline);
+  box-shadow: 0 0 0 2px var(--accent-focus-ring);
+  background-color: var(--surface-input-focus);
+}
+
+.tunnel-custom-area {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.network-card__body .proxy-saved-selected-card {
+  margin-top: 2px;
+}
+
+@media (max-width: 420px) {
+  .network-routing-row {
+    grid-template-columns: 1fr;
+  }
+
+  .network-routing-modes,
+  .network-routing-row .ft-select-shell,
+  .network-routing-row .dropdown-select-trigger {
+    justify-self: start;
+    width: 100%;
+  }
+
+  .network-routing-modes button {
+    flex: 1;
+  }
+}
+
+.ssh-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 16px;
+  padding: 0 2px;
+}
+
+.ssh-grid.single {
+  grid-template-columns: 1fr;
+}
+
+.ssh-grid-general {
+  grid-template-columns: minmax(0, 1fr) 160px;
+}
+
+.ssh-grid label {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-md);
+}
+
+.ssh-grid .span-2,
+.ssh-grid label.span-2,
+.ssh-grid label.full {
+  grid-column: 1 / -1;
+}
+
+.ssh-grid label.narrow {
+  max-width: 240px;
+}
+
+.ssh-grid label.full {
+  align-items: start;
+}
+
+.ssh-grid input:not([type='checkbox']):not([type='radio']),
+.ssh-grid textarea,
+.ssh-grid .dropdown-select-trigger,
+.ssh-grid .ft-select-shell {
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--button-height-md, 36px);
+  min-height: var(--button-height-md, 36px);
+  padding: 0 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--input-bg, var(--surface-input));
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-sm);
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.ssh-grid textarea {
+  min-height: 72px;
+  height: auto;
+  padding: 6px 10px;
+  resize: vertical;
+}
+
+.ssh-grid input:not(.selection-control):hover:not(:disabled),
+.ssh-grid textarea:hover:not(:disabled),
+.ssh-grid .dropdown-select-trigger:hover:not(:disabled),
+.ssh-grid .ft-select-shell:hover:not(:has(select:disabled)) {
+  border-color: var(--border-default);
+}
+
+.ssh-grid input:not(.selection-control):focus,
+.ssh-grid textarea:focus,
+.ssh-grid .dropdown-select-trigger:focus-visible,
+.ssh-grid .ft-select-shell:focus-within {
+  outline: none;
+  border-color: var(--focus-outline);
+  box-shadow: 0 0 0 2px var(--accent-focus-ring);
+}
+
+.terminal-key-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--border-dark);
+}
+
+.terminal-key-box strong {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+}
+
+.terminal-key-box label {
+  grid-template-columns: 132px 1fr;
+  font-size: var(--font-size-md);
+}
+
+.terminal-key-box label > .ssh-terminal-type-hint {
+  grid-column: 2;
+  margin-left: 0;
+}
+
+.ssh-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-md);
+}
+
+/* Reconnect limit box inside auto reconnect toggle */
+.reconnect-auto-limit-box {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 8px;
+  margin-left: 22px;
+  max-width: calc(100% - 22px);
+}
+
+.reconnect-auto-limit-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.reconnect-auto-limit-label input {
+  width: 90px;
+  height: var(--button-height-md, 36px);
+  min-height: var(--button-height-md, 36px);
+  padding: 0 10px;
+  box-sizing: border-box;
+  border-radius: 8px;
+  border: 1px solid var(--border-light);
+  background: var(--input-bg);
+  color: var(--text-main);
+  font-size: var(--font-size-md);
+}
+
+.reconnect-auto-limit-hint {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.reliability-inputs-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-left: 22px;
+  max-width: calc(100% - 22px);
+}
+
+.reliability-field-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.reliability-field-label {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.reliability-field-box input {
+  width: 100%;
+  height: var(--button-height-md, 36px);
+  min-height: var(--button-height-md, 36px);
+  box-sizing: border-box;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-light);
+  background: var(--input-bg);
+  color: var(--text-main);
+  font-size: var(--font-size-md);
+}
+
+@media (max-width: 560px) {
+  .reliability-inputs-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ssh-grid .ssh-checkbox {
+  display: flex;
+  grid-template-columns: none;
+}
+
+.session-log-top-hint {
+  margin-left: 22px !important;
+  margin-top: 2px !important;
+  margin-bottom: 6px !important;
+}
+
+.session-log-box {
+  margin-top: 6px;
+  gap: 10px;
+}
+
+.session-log-directory-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.session-log-directory-control input {
+  min-width: 0;
+  flex: 1;
+}
+
+.session-log-directory-control button {
+  flex: 0 0 auto;
+  min-width: 88px;
+  min-height: 36px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: var(--radius-md, 6px);
+  font-size: var(--button-font-size-regular);
+  white-space: nowrap;
+}
+
+.session-log-serial-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-dark);
+}
+
+.serial-port-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding-left: 82px;
+}
+
+.serial-port-picker > .ft-select-shell,
+.serial-port-picker > .dropdown-select-trigger {
+  min-width: 0;
+  flex: 1;
+}
+
+.serial-port-picker__refresh {
+  flex: 0 0 auto;
+  min-height: 36px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: var(--radius-md, 6px);
+  white-space: nowrap;
+}
+
+.serial-port-picker__error {
+  margin-top: 0;
+}
+
+.ssh-inline-action {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.saved-fingerprint-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  background: var(--bg-card);
+}
+
+.saved-fingerprint-card__icon {
+  color: var(--text-muted);
+  font-size: 20px;
+}
+
+.saved-fingerprint-card__content {
+  min-width: 0;
+}
+
+.saved-fingerprint-card__content strong {
+  display: block;
+  color: var(--text-main);
+  font-size: var(--font-size-md);
+  font-weight: 600;
+}
+
+.saved-fingerprint-card__content p {
+  margin: 3px 0 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.saved-fingerprint-card__action {
+  min-width: 112px;
+  min-height: 36px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: var(--radius-md, 6px);
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.saved-fingerprint-card__action .material-symbols-outlined {
+  font-size: 15px;
+}
+
+@media (max-width: 680px) {
+  .saved-fingerprint-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .saved-fingerprint-card__action {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
+.ssh-field-hint {
+  margin-top: 6px;
+  margin-left: 82px;
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+/* Inside a fieldset without a label grid, hints align under the checkbox text */
+.ssh-fieldset > .ssh-field-hint {
+  margin-left: 24px;
+}
+
+.ssh-form-field .ssh-field-hint,
+.ssh-grid-auth .ssh-field-hint {
+  margin-top: 2px;
+  margin-left: 0;
+}
+
+/* Advanced section toggle list */
+.advanced-toggle-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-bottom: 12px;
+  border: 1px solid var(--border-dark);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.advanced-toggle-row {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 12px;
+}
+
+.advanced-toggle-row:not(:last-child) {
+  border-bottom: 1px solid var(--border-dark);
+}
+
+.advanced-toggle-label {
+  cursor: pointer;
+}
+
+.advanced-toggle-name {
+  font-size: var(--font-size-md);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--text-main);
+  line-height: 1.4;
+}
+
+.advanced-toggle-hint {
+  margin: 0;
+  margin-left: 22px;
+  min-width: 0;
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+  letter-spacing: 0.01em;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.resource-monitoring-interval {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 132px);
+  align-items: center;
+  gap: 8px;
+  margin-left: 22px;
+  min-width: 0;
+  max-width: calc(100% - 22px);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+}
+
+.resource-monitoring-interval__select {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Keep both platform branches aligned with the normal SSH form inputs: 36px
+   high, 8px corners, and a centered text line inside the control. */
+.resource-monitoring-interval__select.dropdown-select-trigger,
+.resource-monitoring-interval__select.ft-select-shell select {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: 36px;
+  min-height: 36px;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text-main);
+}
+
+.resource-monitoring-interval__select.dropdown-select-trigger {
+  justify-content: space-between;
+  padding: 0 12px;
+  line-height: 1;
+}
+
+.resource-monitoring-interval__select.ft-select-shell {
+  height: 36px;
+}
+
+.resource-monitoring-interval__select.ft-select-shell select {
+  display: block;
+  padding: 0 34px 0 12px !important;
+  line-height: 34px;
+}
+
+/* The global default interval should keep the neutral control border even
+   while it has focus; it is a preference selector, not an invalid field. */
+.settings-connection-defaults .resource-monitoring-interval__select.dropdown-select-trigger:focus,
+.settings-connection-defaults .resource-monitoring-interval__select .dropdown-select-trigger:focus,
+.settings-connection-defaults .resource-monitoring-interval__select select:focus {
+  outline: none;
+  border-color: var(--border-light);
+  box-shadow: none;
+}
+
+@media (max-width: 420px) {
+  .resource-monitoring-interval {
+    grid-template-columns: 1fr;
+    justify-items: start;
+  }
+
+  .resource-monitoring-interval__select {
+    width: min(100%, 180px);
+  }
+}
+
+.resource-monitoring-interval:has(.ft-select-shell select:disabled),
+.resource-monitoring-interval:has(.dropdown-select-trigger:disabled) {
+  opacity: 0.55;
+}
+
+.resource-monitoring-items-section {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 0 22px;
+  min-width: 0;
+}
+
+.resource-monitoring-items-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.resource-monitoring-items-header p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.resource-monitoring-items {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px 8px;
+}
+
+.resource-monitoring-item-card {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  min-height: 38px;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md, 6px);
+  background: var(--bg-card);
+  color: var(--text-main);
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-drag: none;
+  transition:
+    border-color 0.15s ease,
+    opacity 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.resource-monitoring-item-card:hover {
+  border-color: var(--text-muted);
+  background: var(--bg-hover);
+}
+
+.resource-monitoring-item-card:active,
+.resource-monitoring-item-card.dragging {
+  cursor: grabbing;
+}
+
+.resource-monitoring-item-card.dragging {
+  opacity: 0.5;
+}
+
+.resource-monitoring-item-card.drop-top {
+  box-shadow: inset 0 2px 0 var(--focus-outline);
+}
+
+.resource-monitoring-item-card.drop-bottom {
+  box-shadow: inset 0 -2px 0 var(--focus-outline);
+}
+
+.resource-monitoring-item-card:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.resource-monitoring-item-drag-handle {
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+  cursor: grab;
+}
+
+.resource-monitoring-item-card:active .resource-monitoring-item-drag-handle,
+.resource-monitoring-item-card.dragging .resource-monitoring-item-drag-handle {
+  cursor: grabbing;
+}
+
+.resource-monitoring-item-copy {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.resource-monitoring-item-copy strong {
+  display: block;
+  overflow: hidden;
+  color: var(--text-main);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resource-monitoring-item-toggle {
+  flex: 0 0 auto;
+  gap: 0;
+}
+
+.resource-monitoring-reset-button {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 4px;
+  min-height: 26px;
+  padding: 3px 7px;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  line-height: 1;
+}
+
+.resource-monitoring-reset-button:hover:not(:disabled) {
+  border-color: var(--focus-outline);
+  color: var(--text-main);
+}
+
+.resource-monitoring-reset-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.resource-monitoring-top-drop-zone {
+  grid-column: 1 / -1;
+  height: 4px;
+  margin: -2px 4px 0;
+  border-radius: 999px;
+  background: var(--focus-outline);
+  pointer-events: auto;
+}
+
+.resource-monitoring-panel-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  min-height: 34px;
+  gap: 8px;
+  padding: 5px 10px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md, 6px);
+  background: var(--bg-card);
+  color: var(--text-main);
+  cursor: pointer;
+  user-select: none;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.resource-monitoring-panel-row:hover:not(:has(input:disabled)) {
+  border-color: var(--text-muted);
+  background: var(--bg-hover);
+}
+
+.resource-monitoring-panel-row:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.resource-monitoring-panel-name {
+  overflow: hidden;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resource-monitoring-panel-toggle {
+  flex: 0 0 auto;
+  gap: 0;
+}
+
+@media (max-width: 900px) {
+  .resource-monitoring-items {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .resource-monitoring-items-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .resource-monitoring-reset-button {
+    align-self: flex-start;
+  }
+}
+
+@media (max-width: 420px) {
+  .resource-monitoring-items {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .resource-monitoring-item-card {
+    min-height: 36px;
+    padding: 5px 7px;
+  }
+}
+
+/* Keep the legacy selector harmless for persisted or third-party markup. */
+.resource-monitoring-item > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Reconnect mode: labelled group wrapping the three-way radio list */
+.reconnect-mode-group {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.reconnect-mode-group__label {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  padding-left: 2px;
+}
+
+.ssh-placeholder {
+  display: grid;
+  place-items: center;
+  min-height: 320px;
+  border: 1px solid var(--border-dark);
+}
+
+.modal-error {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: var(--danger-surface);
+  border: 1px solid var(--danger-border);
+  border-radius: 10px;
+  color: var(--danger-text);
+  font-size: var(--font-size-md);
+  line-height: 1.5;
+}
+
+.ssh-auth-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--status-info) 22%, var(--border-subtle));
+  border-radius: var(--radius-md, 6px);
+  background: color-mix(in srgb, var(--status-info) 7%, var(--surface-panel));
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.55;
+}
+
+.ssh-auth-hint__icon {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: var(--status-info);
+}
+
+.ssh-auth-hint__content {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ssh-auth-hint__item {
+  min-width: 0;
+  color: var(--text-secondary);
+}
+
+.ssh-auth-hint__line {
+  min-width: 0;
+}
+
+.ssh-auth-hint__lead {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-right: 4px;
+}
+
+.ssh-auth-hint__subtle {
+  color: var(--text-muted);
+}
+
+.ssh-auth-hint code,
+.ssh-auth-hint__code {
+  display: inline-block;
+  padding: 1px 5px;
+  border-radius: var(--radius-xs, 3px);
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 80%, transparent);
+  background: color-mix(in srgb, var(--text-primary) 6%, var(--surface-card));
+  color: var(--text-primary);
+  font-family: var(--font-mono, monospace);
+  font-size: var(--font-size-xs);
+  line-height: 1.35;
+  word-break: break-all;
+}
+
+.ssh-auth-hint__example {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin-top: 4px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm, 4px);
+  background: color-mix(in srgb, var(--surface-card) 65%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--status-info) 25%, var(--border-subtle));
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+.ssh-auth-hint__example-tag {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--status-info);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.ssh-auth-hint__example-sep {
+  color: var(--text-muted);
+}
+
+.ssh-form-field,
+.ssh-secret-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ssh-form-field.span-2,
+.ssh-secret-field.span-2 {
+  grid-column: 1 / -1;
+}
+
+.ssh-form-field__header,
+.ssh-secret-field__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  min-height: 22px;
+}
+
+.ssh-form-field__header > label,
+.ssh-secret-field__header > label {
+  display: block;
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-md);
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.ssh-secret-field__optional {
+  margin-left: 4px;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 400;
+}
+
+.ssh-secret-field__clear,
+.ssh-secret-field__undo {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 4px;
+  border: 1px solid var(--border-light);
+  border-radius: 5px;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.ssh-secret-field__clear {
+  padding: 3px 8px;
+  color: var(--status-danger);
+  background: transparent;
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+}
+
+.ssh-secret-field__clear:hover {
+  border-color: var(--status-danger);
+  background: color-mix(in srgb, var(--status-danger) 10%, transparent);
+}
+
+.ssh-secret-field__cleared {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 1 auto;
+  gap: 6px;
+  min-width: 0;
+  color: var(--status-danger);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  text-align: right;
+}
+
+.ssh-secret-field__undo {
+  padding: 2px 6px;
+  color: var(--text-primary);
+  background: var(--surface-hover);
+  font-size: var(--font-size-xs);
+}
+
+.ssh-secret-field__undo:hover {
+  border-color: var(--border-focus);
+  color: var(--action-primary-bg);
+}
+
+.ssh-secret-field__input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.ssh-grid .ssh-secret-field__input-wrap > input[type] {
+  padding-right: 36px;
+}
+
+.ssh-secret-field__toggle {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: var(--radius-sm, 4px);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ssh-secret-field__input-wrap:focus-within .ssh-secret-field__toggle {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.ssh-secret-field__toggle:hover:not(:disabled) {
+  color: var(--text-primary);
+}
+
+.ssh-secret-field__toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ssh-secret-field__toggle:focus-visible {
+  outline: 2px solid var(--focus-outline);
+  outline-offset: 1px;
+}
+
+.ssh-form-field input::placeholder,
+.ssh-secret-field input::placeholder {
+  color: var(--text-muted);
+}
+
+.ssh-form-field input:disabled,
+.ssh-secret-field input:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.ssh-actions {
+  margin-top: 12px;
+  align-items: center;
+}
+
+.ssh-actions .connection-test-feedback {
+  min-width: 0;
+  max-width: min(100%, 48ch);
+  flex: 0 1 48ch;
+  margin-right: auto;
+}
+
+.connection-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 12px;
+}
+
+.connection-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--font-size-md);
+  font-weight: 500;
+}
+
+.connection-form input,
+.connection-form .dropdown-select-trigger,
+.connection-form .ft-select-shell {
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--input-bg, var(--surface-input));
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-sm);
+  font-weight: 400;
+  transition: border-color var(--transition-normal);
+  box-sizing: border-box;
+}
+
+.connection-form .ft-select-shell {
+  padding: 0;
+}
+
+.connection-form input:focus,
+.connection-form .dropdown-select-trigger:focus-visible,
+.connection-form .ft-select-shell:focus-within {
+  outline: none;
+  border-color: var(--focus-outline);
+  box-shadow: 0 0 0 2px var(--accent-focus-ring);
+}
+
+.connection-form input:hover,
+.connection-form .dropdown-select-trigger:hover:not(:disabled),
+.connection-form .ft-select-shell:hover:not(:has(select:disabled)) {
+  border-color: var(--border-default);
+}
+
+.checkbox-row {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 8px !important;
+  align-self: end;
+  height: 36px;
+}
+
+.flat-button,
+.primary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 20px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-family: var(--font-ui);
+  font-size: var(--button-font-size-prominent);
+  font-weight: var(--button-font-weight);
+  line-height: var(--button-line-height);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.flat-button {
+  background: var(--bg-hover);
+  color: var(--text-main);
+  border-color: var(--border-light);
+}
+
+.flat-button:hover {
+  background: var(--bg-card);
+  border-color: var(--text-muted);
+}
+
+.flat-button:focus-visible,
+.primary-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-focus-ring);
+}
+
+.flat-button.danger {
+  color: var(--danger-text);
+}
+
+.flat-button.danger:hover {
+  background: var(--danger-surface);
+  border-color: var(--danger-border);
+}
+
+.flat-button.danger:focus-visible {
+  box-shadow: 0 0 0 3px var(--danger-border);
+}
+
+.primary-button {
+  background: var(--button-primary-bg);
+  color: var(--button-primary-text);
+  border-color: var(--button-primary-border);
+}
+
+.primary-button:hover:not(:disabled) {
+  background: var(--button-primary-hover);
+  border-color: var(--button-primary-hover);
+  box-shadow: 0 4px 20px var(--accent-tint);
+  transform: translateY(-1px);
+}
+
+.primary-button:disabled,
+.flat-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  grid-column: 1 / -1;
+  margin-top: 20px;
+}
+
+/* Modal actions use the same compact density as settings actions. Keep the
+ * button content optional so text-only actions do not reserve an empty icon
+ * slot, while icon + text actions keep their existing icon. */
+.form-actions > .flat-button,
+.form-actions > .primary-button {
+  box-sizing: border-box;
+  min-height: 36px;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: var(--radius-md, 6px);
+  gap: 6px;
+  font-size: var(--button-font-size-regular);
+  min-width: 88px;
+}
+
+.file-action-submit-button {
+  min-width: 100px;
+}
+
+.button-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: button-spinner-rotate 0.75s linear infinite;
+}
+
+.stable-button-icon {
+  display: grid;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  place-items: center;
+}
+
+.stable-button-icon .button-spinner {
+  width: 14px;
+  height: 14px;
+}
+
+.stable-button-label {
+  display: grid;
+  min-width: max-content;
+  white-space: nowrap;
+}
+
+.stable-button-label > span {
+  grid-area: 1 / 1;
+}
+
+.stable-button-label-reserve {
+  visibility: hidden;
+}
+
+@keyframes button-spinner-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}

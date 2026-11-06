@@ -1,0 +1,374 @@
+/*
+ * Non-default theme surface bridge.
+ *
+ * The untouched transterm presets keep their historical component skins.
+ * Codex and imported iTerm2 presets use the compact surface hierarchy instead of
+ * inheriting those built-in hard-coded backgrounds:
+ *   surface          -> primary canvas
+ *   surfaceSecondary -> sidebars and file panes
+ *   surfaceTitlebar -> window chrome and tab strips
+ *   surfaceElevated -> controls and overlays
+ */
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .fs-shell,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .fs-main,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .connection-manager-layout,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .connection-manager-main {
+  background: var(--surface-canvas) !important;
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .fs-sidebar,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .home-sidebar,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .connection-manager-sidebar,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .system-sidebar-layout {
+  background: var(--theme-sidebar-background, var(--surface-sidebar)) !important;
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .fs-tabbar,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .titlebar-tabarea,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .window-menubar,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .standalone-window-titlebar {
+  background: var(--surface-titlebar) !important;
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .fs-tab,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .file-tabs button {
+  background: transparent;
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .fs-tab.active,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .file-tabs button.active {
+  background: var(--surface-tab-active) !important;
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .file-manager,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .file-toolbar,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .command-pane-preview {
+  background: var(--surface-sidebar) !important;
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .file-tabs {
+  background: var(--surface-toolbar) !important;
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .file-split-resizer {
+  background: var(--surface-sidebar);
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .settings-modal .connection-manager-layout {
+  background: var(--surface-canvas) !important;
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .terminal-dock-bar {
+  background: var(--surface-elevated) !important;
+}
+
+/*
+ * The renderer keeps data-theme="transterm-dark|transterm-light" for the mode,
+ * even when the values come from a custom theme. The legacy component skin is
+ * therefore still active and contains the old hard-coded pane/table colors.
+ * Rebind those structural surfaces here, without adding a token for every
+ * component and while preserving the historical transterm default skin.
+ */
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .session-workspace,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .workspace-stage,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .system-info-workspace,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .home-workspace {
+  background: var(--surface-canvas) !important;
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .sys-card,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .connection-summary,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .process-table,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .disk-table,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .disk-scroll-region,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .disk-body,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .file-manager,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .command-pane-preview {
+  background: var(--surface-sidebar) !important;
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .local-terminal-frame {
+  background: var(--surface-sidebar) !important;
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .file-toolbar,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .pane-title,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .system-sidebar-layout .disk-table::after,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .transfer-strip {
+  background: var(--surface-elevated) !important;
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .file-toolbar,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .pane-title,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .transfer-strip {
+  color: var(--text-primary) !important;
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .pane-title span,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .pane-path-bar strong,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .pane-path-bar span,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .file-current-path.is-status-hint,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .transfer-strip {
+  color: var(--text-secondary) !important;
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .file-toolbar button,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-'])
+  .file-tab-actions
+  button:not(.file-pane-mode-select):not([aria-pressed]),
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .pane-path-bar-action,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .pane-filter-mode-toggles,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .pane-filter-mode-btn.active {
+  background: var(--surface-elevated) !important;
+  color: var(--text-primary) !important;
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .pane-filter-input-wrapper:hover,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .pane-filter-input-wrapper:focus-within {
+  background: var(--surface-elevated) !important;
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .fs-file-table {
+  color: var(--text-primary) !important;
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .fs-file-table th {
+  color: var(--text-secondary) !important;
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .fs-file-table tbody tr:hover,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .fs-file-table tbody tr.is-selected,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .disk-row:hover {
+  background: var(--bg-active) !important;
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .file-split-resizer {
+  background: transparent !important;
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .file-split-resizer::before {
+  background: var(--border-light) !important;
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .system-sidebar-layout .system-title,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .system-sidebar-layout .network-select {
+  background: var(--surface-elevated) !important;
+  color: var(--text-primary) !important;
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .system-sidebar-layout .grid-chart {
+  background: transparent;
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .system-sidebar-layout .mini-tabs {
+  background: var(--surface-elevated) !important;
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .system-sidebar-layout .mini-tabs span {
+  background: transparent !important;
+  color: var(--text-secondary) !important;
+  border-color: var(--border-light) !important;
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .system-sidebar-layout .mini-tabs span.active {
+  background: var(--mini-tab-active-bg) !important;
+  color: var(--mini-tab-active-text) !important;
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .system-sidebar-layout .meter-track,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .system-sidebar-layout .collapsed-resource-track {
+  background: color-mix(in srgb, var(--surface-elevated) 72%, var(--surface-sidebar) 28%) !important;
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .system-sidebar-layout .disk-head {
+  background: var(--surface-elevated) !important;
+  color: var(--text-secondary) !important;
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .system-sidebar-layout .process-row,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .system-sidebar-layout .disk-row {
+  color: var(--text-primary) !important;
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .terminal-dock-placeholder {
+  color: var(--text-secondary) !important;
+  opacity: 0.78;
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .terminal-dock-bar {
+  color: var(--text-primary);
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .settings-modal,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .settings-modal .connection-manager-layout,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .settings-modal .connection-manager-main,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .settings-modal .settings-panel {
+  background: var(--surface-canvas) !important;
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .settings-modal .theme-config-toolbar,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .settings-modal .theme-advanced-section,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .settings-modal .theme-color-field {
+  background: var(--surface-sidebar) !important;
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .settings-modal .connection-manager-footer,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .settings-modal .theme-config-preview,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-'])
+  .settings-modal
+  .theme-config-select.dropdown-select-trigger,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-'])
+  .settings-modal
+  .theme-config-select.ft-select-shell,
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .settings-modal .theme-color-text {
+  background: var(--surface-elevated) !important;
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .settings-modal .connection-manager-header {
+  background: var(--surface-canvas) !important;
+}
+
+/*
+ * macOS Codex dark glass is deliberately limited to the Home navigation rail.
+ * The native window is transparent, so every ancestor between the rail and
+ * the AppKit vibrancy view must also be transparent. The Home content panel,
+ * title/tab bar, and settings navigation remain opaque surfaces.
+ */
+:root[data-platform='darwin'][data-theme-base='codex']:not([data-theme*='light']),
+:root[data-platform='darwin'][data-theme-base='codex']:not([data-theme*='light']) body,
+:root[data-platform='darwin'][data-theme-base='codex']:not([data-theme*='light']) #root {
+  background: transparent !important;
+}
+
+:root[data-platform='darwin'][data-theme-base='codex']:not([data-theme*='light']) .fs-shell.is-home-active,
+:root[data-platform='darwin'][data-theme-base='codex']:not([data-theme*='light']) .fs-shell.is-home-active .fs-main,
+:root[data-platform='darwin'][data-theme-base='codex']:not([data-theme*='light'])
+  .fs-shell.is-home-active
+  .workspace-stage,
+:root[data-platform='darwin'][data-theme-base='codex']:not([data-theme*='light'])
+  .fs-shell.is-home-active
+  .workspace-stage-transition,
+:root[data-platform='darwin'][data-theme-base='codex']:not([data-theme*='light'])
+  .fs-shell.is-home-active
+  .home-workspace {
+  background: transparent !important;
+}
+
+:root[data-platform='darwin'][data-theme-base='codex']:not([data-theme*='light'])
+  .fs-shell.is-home-active
+  .home-sidebar {
+  background: var(--codex-glass-surface) !important;
+  background-color: var(--codex-glass-surface) !important;
+  border-right: 1px solid var(--codex-glass-divider) !important;
+  transition: none !important;
+}
+
+:root[data-platform='darwin'][data-theme-base='codex']:not([data-theme*='light'])
+  .fs-shell.is-home-active
+  .home-sidebar
+  .sidebar-resizer {
+  background: transparent !important;
+  transition: none !important;
+}
+
+:root[data-platform='darwin'][data-theme-base='codex']:not([data-theme*='light'])
+  .fs-shell.is-home-active
+  .home-sidebar
+  .sidebar-resizer::after {
+  display: none !important;
+  background: transparent !important;
+  transition: none !important;
+}
+
+/* Keep the two sides of the title-bar/rail corner on one static divider
+ * color. The resize hit area must not add a second animated line. */
+:root[data-platform='darwin'][data-theme-base='codex']:not([data-theme*='light'])
+  .fs-shell.is-home-active
+  .home-tabs-bar
+  .fs-tabbar,
+:root[data-platform='darwin'][data-theme-base='codex']:not([data-theme*='light'])
+  .fs-shell.is-home-active
+  .home-tabs-bar
+  .titlebar-brand {
+  background: var(--codex-glass-surface) !important;
+  transition: none !important;
+}
+
+:root[data-platform='darwin'][data-theme-base='codex']:not([data-theme*='light'])
+  .fs-shell.is-home-active
+  .home-tabs-bar
+  .fs-tabbar {
+  background: transparent !important;
+}
+
+:root[data-platform='darwin'][data-theme-base='codex']:not([data-theme*='light'])
+  .fs-shell.is-home-active
+  .home-tabs-bar
+  .fs-tabbar::after {
+  background: var(--codex-glass-divider) !important;
+  transition: none !important;
+}
+
+:root[data-platform='darwin'][data-theme-base='codex']:not([data-theme*='light'])
+  .fs-shell.is-home-active
+  .home-tabs-bar
+  .titlebar-brand {
+  border-right-color: var(--codex-glass-divider) !important;
+  transition: none !important;
+}
+
+:root[data-platform='darwin'][data-theme-base='codex']:not([data-theme*='light'])
+  .fs-shell.is-home-active
+  .home-main-content {
+  background: var(--bg-main) !important;
+}
+
+:root[data-platform='darwin'][data-theme-base='codex']:not([data-theme*='light']) .fs-sidebar,
+:root[data-platform='darwin'][data-theme-base='codex']:not([data-theme*='light']) .fs-tabbar .titlebar-brand {
+  --surface-sidebar: var(--surface-elevated);
+}
+
+:root[data-platform='darwin'][data-theme-base='codex']:not([data-theme*='light']) .fs-sidebar {
+  --theme-sidebar-background: var(--surface-elevated);
+  --theme-sidebar-backdrop-filter: none;
+}
+
+:root[data-platform='darwin'][data-theme-base='codex']:not([data-theme*='light']) .system-sidebar-layout {
+  --surface-sidebar: var(--surface-elevated);
+  --surface-panel: var(--surface-elevated);
+  --theme-sidebar-background: var(--surface-elevated);
+  --theme-sidebar-backdrop-filter: none;
+  --network-panel-bg: var(--surface-elevated);
+}
+
+:root[data-platform='darwin'][data-theme-base='codex']:not([data-theme*='light']) .system-sidebar-layout .system-title {
+  border-color: var(--border-subtle);
+}
+
+:root[data-platform='darwin'][data-theme-base='codex']:not([data-theme*='light'])
+  .fs-shell.is-home-active
+  .settings-modal
+  .connection-manager-sidebar {
+  --theme-sidebar-background: var(--surface-elevated);
+  --theme-sidebar-backdrop-filter: none;
+}
+
+/* Only the outer home shell follows native window focus; embedded sidebars keep a fixed surface. */
+:root[data-platform='darwin'][data-theme-base='codex']:not([data-theme*='light'])[data-window-focused='false']
+  .fs-shell.is-home-active
+  .home-sidebar,
+:root[data-platform='darwin'][data-theme-base='codex']:not([data-theme*='light'])[data-window-focused='false']
+  .fs-shell.is-home-active
+  .home-tabs-bar
+  .titlebar-brand,
+:root[data-platform='darwin'][data-theme-base='codex']:not([data-theme*='light'])[data-window-focused='false']
+  .fs-shell.is-home-active
+  .home-tabs-bar
+  .fs-tabbar {
+  background: var(--codex-glass-unfocused-surface) !important;
+  background-color: var(--codex-glass-unfocused-surface) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}

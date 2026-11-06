@@ -1,0 +1,77 @@
+.ai-copilot-panel .ai-copilot-message-markdown,
+.ai-copilot-panel .ai-copilot-message-plain,
+.ai-copilot-panel .ai-copilot-composer textarea {
+  font-size: var(--font-size-chat);
+  line-height: 1.65;
+}
+
+.ai-copilot-panel .ai-copilot-message-markdown pre {
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+}
+
+.ai-copilot-panel .ai-copilot-message-markdown :is(h1, h2, h3, h4, h5, h6) {
+  font-size: var(--font-size-chat);
+  line-height: 1.5;
+}
+
+.ai-copilot-panel .ai-copilot-message-markdown h1 {
+  font-size: var(--font-size-lg);
+}
+
+.ai-copilot-panel .ai-copilot-context-switch {
+  height: 30px;
+}
+
+.ai-copilot-panel .ai-copilot-composer-select.dropdown-select-trigger,
+.ai-copilot-panel .ai-copilot-composer-select.ai-copilot-mode-select.dropdown-select-trigger {
+  height: 30px;
+  min-height: 30px;
+  padding-inline: 6px;
+}
+
+.ai-copilot-panel .ai-copilot-composer-models {
+  gap: 2px;
+}
+
+.ai-copilot-panel .ai-copilot-dangerous-command-dock {
+  height: 30px;
+  min-height: 30px;
+  max-height: 30px;
+}
+
+.ai-copilot-panel .ai-copilot-dangerous-command-toggle {
+  height: 24px;
+}
+
+/* Keep selectors readable when the AI panel shares the window with a terminal. */
+@container ai-copilot (max-width: 540px) {
+  .ai-copilot-panel .ai-copilot-composer-toolbar-actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    row-gap: 8px;
+  }
+
+  .ai-copilot-panel .ai-copilot-composer-models {
+    order: -1;
+    flex: 1 0 100%;
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+
+  .ai-copilot-panel .ai-copilot-composer-send {
+    margin-left: auto;
+  }
+
+  .ai-copilot-panel .ai-copilot-context-dock-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .ai-copilot-panel .ai-copilot-context-dock-hint {
+    flex: 1 1 150px;
+    text-align: left;
+    line-height: 1.5;
+  }
+}

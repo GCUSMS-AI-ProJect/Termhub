@@ -1,0 +1,8 @@
+{
+  "name": "transterm-rea-runtime",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "rea-agents": "6.7.0"
+  }
+}

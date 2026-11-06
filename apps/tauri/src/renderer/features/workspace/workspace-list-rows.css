@@ -1,0 +1,12 @@
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-'])
+  .fs-file-table
+  tbody
+  tr:nth-child(n):not(:hover):not(.is-selected),
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .process-row:nth-child(n):not(.is-selected),
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-']) .disk-row:nth-child(n):not(:hover),
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-'])
+  .system-table
+  tbody
+  tr:nth-child(n):not(.is-selected) {
+  background: var(--surface-panel);
+}

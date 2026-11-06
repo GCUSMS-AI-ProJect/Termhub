@@ -1,0 +1,60 @@
+{
+  "name": "transterm",
+  "version": "2.3.1-beta.10",
+  "private": true,
+  "license": "MIT",
+  "description": "Modern remote workspace for SSH, SFTP, and FTP.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev:tauri",
+    "dev:tauri": "node ./scripts/workspace-run.mjs dev apps/tauri",
+    "lint": "eslint apps/tauri packages/core packages/shared packages/storage --max-warnings=0",
+    "lint:fix": "eslint apps/tauri packages/core packages/shared packages/storage --fix --max-warnings=0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "sync:version": "node ./scripts/sync-version-from-root.mjs",
+    "build:packages": "node ./scripts/workspace-run.mjs build packages/core packages/shared packages/storage",
+    "build": "npm run build:tauri",
+    "build:tauri": "node ./scripts/workspace-run.mjs build apps/tauri",
+    "build:win": "npm run build:packages && npm run build:win -w @transterm/tauri",
+    "typecheck": "npm run build:packages && node ./scripts/workspace-run.mjs typecheck packages/core packages/shared packages/storage apps/tauri",
+    "test": "npm run test:tauri",
+    "test:tauri": "node ./scripts/workspace-run.mjs test apps/tauri",
+    "test:local": "npm run typecheck && npm run lint && npx prettier --check apps/tauri packages/core packages/shared packages/storage && npm run test:renderer -w @transterm/tauri && npm run test:tauri",
+    "prepare": "husky",
+    "version:bump": "node ./scripts/bump-version.mjs",
+    "release:mac": "node ./scripts/workspace-run.mjs release:mac apps/tauri",
+    "release:win": "node ./scripts/workspace-run.mjs release:win apps/tauri",
+    "release:linux": "node ./scripts/workspace-run.mjs release:linux apps/tauri",
+    "qa:ai-copilot-fixture": "node ./scripts/ai-copilot-fixture-provider.mjs",
+    "qa:ai-copilot-fixture-smoke": "node ./scripts/ai-copilot-fixture-smoke.mjs",
+    "qa:mcp-stdio-smoke": "node ./scripts/mcp-stdio-smoke.mjs"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "lint-staged": {
+    "*.{js,cjs,mjs,ts,tsx,cts,mts}": [
+      "prettier --write",
+      "eslint --fix --max-warnings=0"
+    ],
+    "*.{json,md,css,yml,yaml}": "prettier --write"
+  },
+  "devDependencies": {
+    "@eslint-react/eslint-plugin": "^5.18.0",
+    "@eslint/js": "^10.0.1",
+    "@typescript-eslint/eslint-plugin": "^8.63.0",
+    "@typescript-eslint/parser": "^8.63.0",
+    "eslint": "^10.8.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.6",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^16.5.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.9.5"
+  }
+}

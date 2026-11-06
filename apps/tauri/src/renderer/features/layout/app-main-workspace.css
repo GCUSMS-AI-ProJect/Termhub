@@ -1,0 +1,72 @@
+.terminal-right-frame {
+  grid-column: 3;
+  grid-row: 2;
+  box-sizing: border-box;
+  width: 12px;
+  min-height: 0;
+  height: 100%;
+  border-inline: 1px solid var(--terminal-right-frame-accent);
+  background: var(--terminal-right-frame-outer);
+  z-index: 6;
+}
+
+/* Home status banners overlay the workspace instead of occupying a grid row. */
+.fs-shell.is-home-active .fs-main.has-status > .workspace-stage {
+  grid-row: 1;
+}
+
+.fs-shell.has-window-menubar .terminal-right-frame {
+  grid-row: 3;
+}
+
+.fs-shell.is-local-terminal .terminal-right-frame,
+.fs-shell.is-home-active .terminal-right-frame,
+.fs-shell.has-ai-copilot .terminal-right-frame {
+  display: none;
+}
+
+/* Host-groups layout: machine list | workspace | machine info | Copilot.
+ * Columns that are not shown collapse to 0 so grid placement stays fixed. */
+:root .fs-shell.has-host-rail,
+:root .fs-shell.has-host-rail.is-local-terminal {
+  --host-info-width: 0px;
+  --host-copilot-width: 0px;
+  grid-template-columns: var(--host-rail-width, 208px) minmax(0, 1fr) var(--host-info-width) var(--host-copilot-width);
+}
+
+:root .fs-shell.has-host-rail.has-system-sidebar {
+  --host-info-width: var(--sidebar-width, 214px);
+}
+
+:root .fs-shell.has-host-rail.has-ai-copilot {
+  --host-copilot-width: var(--ai-copilot-panel-width);
+}
+
+:root .fs-shell.has-host-rail .fs-main {
+  grid-column: 2;
+}
+
+:root .fs-shell.has-host-rail .fs-main.full-width {
+  grid-column: 2 / 4;
+}
+
+:root .fs-shell.has-host-rail .transfer-strip,
+:root .fs-shell.has-host-rail .transfer-strip.full-width {
+  grid-column: 2 / 4;
+}
+
+:root .fs-shell.has-host-rail.has-ai-copilot .fs-main,
+:root .fs-shell.has-host-rail.has-ai-copilot .transfer-strip {
+  margin-right: 0;
+}
+
+:root .fs-shell.has-host-rail > .fs-sidebar {
+  grid-column: 3;
+  border-right: 0;
+  border-left: 1px solid var(--border-subtle);
+}
+
+:root .fs-shell.has-host-rail > .fs-sidebar .sidebar-resizer {
+  right: auto;
+  left: -3px;
+}

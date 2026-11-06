@@ -1,0 +1,1357 @@
+.fs-shell {
+  --window-tabbar-height: 48px;
+  display: grid;
+  grid-template-columns: var(--sidebar-width, 256px) minmax(0, 1fr) auto;
+  grid-template-rows: var(--window-tabbar-height) minmax(0, 1fr) 24px;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.fs-shell.is-compact-tabbar {
+  --window-tabbar-height: 36px;
+}
+
+:root[data-platform='linux'] .fs-shell {
+  border-radius: var(--window-corner-radius);
+}
+
+:root[data-platform='linux'] .fs-shell.is-window-maximized {
+  border-radius: 0;
+}
+
+.fs-shell.has-window-menubar {
+  --window-menubar-height: 28px;
+  grid-template-rows: var(--window-menubar-height) var(--window-tabbar-height) minmax(0, 1fr) 24px;
+}
+
+.fs-shell.is-local-terminal {
+  grid-template-columns: var(--sidebar-width, 256px) minmax(0, 1fr) 0;
+  grid-template-rows: var(--window-tabbar-height) minmax(0, 1fr);
+}
+
+.fs-shell.has-window-menubar.is-local-terminal {
+  grid-template-columns: var(--sidebar-width, 256px) minmax(0, 1fr) 0;
+  grid-template-rows: var(--window-menubar-height) var(--window-tabbar-height) minmax(0, 1fr);
+}
+
+.window-menubar {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  position: relative;
+  z-index: 1001;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  min-width: 0;
+  height: var(--window-menubar-height, 28px);
+  border-bottom: 1px solid var(--border-light);
+  -webkit-app-region: drag;
+}
+
+/* Keep only native window actions reachable while the Windows/Linux session
+ * lock covers the workspace. The menu actions must not remain available while
+ * the session is locked. */
+.fs-shell.is-session-locked .window-menu-items {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.window-menu-items,
+.window-control-buttons {
+  display: flex;
+  align-items: stretch;
+  -webkit-app-region: no-drag;
+}
+
+.window-menu-items {
+  padding-left: 8px;
+}
+
+.window-control-buttons {
+  margin-left: auto;
+}
+
+.window-brandmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.window-brandmark .app-icon {
+  flex: 0 0 auto;
+}
+
+.window-brandmark strong,
+.window-brandmark span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.window-brandmark strong {
+  font-family:
+    'Outfit',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1;
+  margin-left: 2px;
+}
+
+.window-brandmark span {
+  font-weight: 500;
+  opacity: 0.72;
+}
+
+.standalone-window-titlebar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 300;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  height: 32px;
+  border-bottom: 1px solid var(--border-light);
+  -webkit-app-region: drag;
+}
+
+.window-menu-items button,
+.window-control-buttons button {
+  display: grid;
+  place-items: center;
+  height: 32px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.window-menu-items button {
+  padding: 0 8px;
+  font-size: 13px;
+}
+
+.window-menu-items button.is-open {
+  background: var(--bg-hover);
+}
+
+.window-control-buttons button {
+  width: 46px;
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* Linux uses renderer-provided chrome, so mirror GNOME's compact circular
+ * controls without changing the native-looking Windows control geometry. */
+:root[data-platform='linux'] .window-control-buttons {
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px 0 8px;
+}
+
+:root[data-platform='linux'] .window-control-buttons button {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--surface-elevated);
+  color: var(--window-control-foreground);
+}
+
+:root[data-platform='linux'] .window-control-buttons button:hover:not(:disabled) {
+  background: var(--window-control-hover-surface);
+  color: var(--window-control-hover-foreground);
+}
+
+.fs-sidebar {
+  position: relative;
+  grid-column: 1;
+  grid-row: 2 / 4;
+  display: grid;
+  /* The only in-flow child is the sidebar layout (the resizer is absolute),
+     so a single definite row is required: with `auto 1fr` the layout lands in
+     the auto row and its `height: 100%` resolves to content height in WebKit,
+     collapsing the mount table below the resource card. */
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
+  border-right: 1px solid var(--border-light);
+  background: var(--theme-sidebar-background, var(--bg-sidebar));
+  backdrop-filter: var(--theme-sidebar-backdrop-filter, none);
+  -webkit-backdrop-filter: var(--theme-sidebar-backdrop-filter, none);
+}
+
+.fs-sidebar.is-collapsed {
+  grid-template-rows: 1fr;
+}
+
+.fs-shell.has-window-menubar .fs-sidebar {
+  grid-row: 3 / 5;
+}
+
+.sidebar-resizer {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  bottom: 0;
+  z-index: 30;
+  width: 6px;
+  min-height: 0;
+  cursor: col-resize;
+  transition: background 0.15s ease;
+}
+
+.sidebar-resizer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 1px;
+  background: transparent;
+  pointer-events: none;
+  transition: background 0.15s ease;
+}
+
+.sidebar-resizer:hover::after,
+.sidebar-resizer.is-active::after {
+  background: linear-gradient(180deg, var(--border-dark), var(--border-light));
+}
+
+.sys-card {
+  padding: 12px 12px 0;
+  border-bottom: 1px solid var(--border-light);
+  min-width: 0;
+  overflow: hidden;
+  container-type: inline-size;
+}
+
+/* Resource summaries (including uptime) have an independent compact viewport.
+   Process and network panels stay outside this region so their own layouts do
+   not scroll with it. */
+.system-metrics-scroll-region {
+  --system-metric-row-height: 28px;
+  position: relative;
+  height: calc(var(--system-metric-row-height) * 6);
+  min-height: calc(var(--system-metric-row-height) * 6);
+  max-height: calc(var(--system-metric-row-height) * 6);
+  min-width: 0;
+  overflow: visible;
+}
+
+.system-metrics-scroll {
+  height: 100%;
+  min-width: 0;
+  overflow: auto;
+  scrollbar-width: none;
+  overscroll-behavior: contain;
+  scroll-snap-type: y proximity;
+}
+
+.system-metrics-scroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.system-metrics-scroll-region > .vertical-scrollbar {
+  right: -10px;
+}
+
+/* Keep the resource viewport on whole rows. Without an explicit row box the
+   meter margins vary with the active metric and the next row can peek through
+   at the bottom of the compact sidebar. */
+.system-metrics-scroll > .metric-line,
+.system-metrics-scroll > .meter-group {
+  box-sizing: border-box;
+  height: var(--system-metric-row-height);
+  min-height: var(--system-metric-row-height);
+  max-height: var(--system-metric-row-height);
+  margin: 0;
+  scroll-snap-align: start;
+}
+
+.system-metrics-scroll > .meter-group {
+  display: grid;
+  grid-template-rows: 20px 5px;
+  align-content: center;
+  row-gap: 3px;
+  overflow: visible;
+}
+
+.system-metrics-scroll > .meter-group .meter-header {
+  height: 20px;
+  margin: 0;
+}
+
+.system-metrics-scroll > .meter-group .meter-track {
+  width: 100%;
+  height: 5px;
+}
+
+/* GPU metrics contain one card per physical GPU. Flatten the wrapper so each
+   card is a normal snap-aligned row rather than a variable-height block. */
+.system-metrics-scroll > .gpu-monitor-group {
+  display: contents;
+}
+
+.system-metrics-scroll > .gpu-monitor-group > .gpu-monitor-card {
+  box-sizing: border-box;
+  height: var(--system-metric-row-height);
+  min-height: var(--system-metric-row-height);
+  max-height: var(--system-metric-row-height);
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  scroll-snap-align: start;
+}
+
+.system-metrics-scroll > .gpu-monitor-group > .gpu-monitor-card .meter-group {
+  display: grid;
+  grid-template-rows: 20px 5px;
+  align-content: center;
+  row-gap: 3px;
+  height: var(--system-metric-row-height);
+  min-height: var(--system-metric-row-height);
+  max-height: var(--system-metric-row-height);
+  margin: 0;
+}
+
+.system-metrics-scroll > .gpu-monitor-group > .gpu-monitor-card .meter-header {
+  height: 20px;
+  margin: 0;
+}
+
+.system-metrics-scroll > .gpu-monitor-group > .gpu-monitor-card .meter-track {
+  height: 5px;
+}
+
+.system-metrics-scroll > .gpu-monitor-group > .gpu-monitor-card .metric-line {
+  box-sizing: border-box;
+  height: var(--system-metric-row-height);
+  min-height: var(--system-metric-row-height);
+  max-height: var(--system-metric-row-height);
+  margin: 0;
+}
+
+.system-sidebar-layout {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 0;
+  height: 100%;
+  background: var(--theme-sidebar-background, var(--bg-sidebar));
+  backdrop-filter: var(--theme-sidebar-backdrop-filter, none);
+  -webkit-backdrop-filter: var(--theme-sidebar-backdrop-filter, none);
+}
+
+.system-sidebar-layout.is-collapsed {
+  grid-template-rows: 1fr;
+  justify-items: center;
+  align-items: flex-start;
+  padding-top: 10px;
+}
+
+.sync-row,
+.address-row,
+.metric-line,
+.network-panel,
+.disk-head,
+.disk-row,
+.quick-header,
+.file-toolbar,
+.pane-title,
+.transfer-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sync-row {
+  justify-content: flex-start;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.sync-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.copy-link {
+  border: 0;
+  font-size: 13px;
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+}
+
+.address-row strong.copyable {
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.address-row strong.copyable:hover {
+  color: var(--copy-link);
+}
+
+.address-row span.copied-success {
+  color: var(--success);
+}
+
+.system-title {
+  width: 100%;
+  height: 30px;
+  margin: 8px 28px 8px 0;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+}
+
+.metric-line {
+  justify-content: space-between;
+  gap: 8px;
+  height: 24px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.metric-subline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin: -1px 0 4px 40px;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.memory-details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  margin: 1px 0 4px 40px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.1;
+}
+
+.memory-details strong {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.memory-details .metric-chip {
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.metric-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.metric-chip-summary {
+  width: 100%;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.metric-chip-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.metric-chip strong {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.metric-percent {
+  margin-left: auto;
+  text-align: right;
+}
+
+.metric-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
+@container (min-width: 300px) {
+  .memory-details {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    margin-bottom: 4px;
+  }
+}
+
+.meter-row {
+  display: grid;
+  grid-template-columns: 40px 1fr 84px;
+  align-items: center;
+  height: 26px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.meter-row > * {
+  min-width: 0;
+}
+
+.meter-row strong {
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meter-track {
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.meter-track-stacked {
+  display: flex;
+  gap: 2px;
+}
+
+.meter-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.meter-fill.stacked {
+  border-radius: 0;
+  flex: 0 0 auto;
+}
+
+.meter-fill.stacked:first-child {
+  border-top-left-radius: 999px;
+  border-bottom-left-radius: 999px;
+}
+
+.meter-fill.stacked:last-child {
+  border-top-right-radius: 999px;
+  border-bottom-right-radius: 999px;
+}
+
+.mini-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 16px;
+  font-weight: 600;
+  font-size: 12px;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  overflow: hidden;
+  height: 26px;
+}
+
+.mini-tabs span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  cursor: pointer;
+  opacity: 0.9;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    opacity 0.18s ease;
+}
+
+.mini-tabs span:hover {
+  opacity: 1;
+}
+
+.mini-chart {
+  display: none;
+}
+
+.network-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 30px;
+  font-weight: 600;
+  font-size: 12px;
+  margin-top: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.network-rates {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.network-rate {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+}
+
+.network-rate i {
+  display: inline-flex;
+  align-items: center;
+  font-style: normal;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  opacity: 0.7;
+}
+
+.network-rate strong {
+  font-size: 11px;
+  line-height: 1;
+}
+
+.network-rate.up {
+  color: var(--network-tx);
+}
+
+.network-rate.down {
+  color: var(--network-rx);
+}
+
+.network-select {
+  flex: none;
+  min-width: 0;
+  width: clamp(58px, 38%, 92px);
+  max-width: 92px;
+  height: 22px;
+  min-height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: 400;
+  box-sizing: border-box;
+}
+
+/* system sidebar 的 network-select trigger 在 Windows/Linux 上保持自定义下拉菜单，
+   对其高度、字号与内边距做跨平台对齐。 */
+.system-sidebar-layout .network-select.dropdown-select-trigger {
+  min-height: 22px;
+  height: 22px;
+  padding: 0 6px;
+  font-size: 9px;
+  gap: 4px;
+}
+
+/* The compact sidebar selector is a passive status control. Keep its
+   keyboard/open state visible through the normal surface and border without
+   adding the large blue focus ring used by form inputs. */
+.system-sidebar-layout .network-select.dropdown-select-trigger:focus-visible,
+.system-sidebar-layout .network-select.dropdown-select-trigger[aria-expanded='true'] {
+  border-color: var(--border-light);
+  box-shadow: none;
+  background-color: var(--surface-hover);
+}
+
+.system-sidebar-layout .network-select.ft-select-shell {
+  font-size: 9px;
+}
+
+.system-sidebar-layout .network-select.ft-select-shell:focus-within {
+  border-color: var(--border-light);
+  box-shadow: none;
+  background-color: var(--surface-hover);
+}
+
+.system-sidebar-layout .network-select.ft-select-shell .ft-select-shell__value {
+  font-size: 9px;
+}
+
+.system-sidebar-layout .network-select.dropdown-select-trigger .dropdown-select-arrow {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* macOS 上 system sidebar 的 network-select 采用统一单框样式，
+   去除原生 menulist 重合边框，右侧保留 subtle 下拉箭头。 */
+.system-sidebar-layout .network-select.ft-select-shell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  height: 22px;
+  box-sizing: border-box;
+}
+
+.system-sidebar-layout .network-select.ft-select-shell select {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  padding: 0 16px 0 6px !important;
+  color: inherit;
+  font: inherit;
+  height: 100%;
+  width: 100%;
+  cursor: pointer;
+}
+
+.system-sidebar-layout .network-select.ft-select-shell .ft-select-shell__icon {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.network-history {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: stretch;
+  gap: 6px;
+  margin-bottom: 12px;
+  min-width: 0;
+}
+
+.network-scale {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 4px 0 8px;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.grid-chart {
+  height: 62px;
+  position: relative;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 6px 6px 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.network-chart-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.network-guide {
+  stroke-linecap: round;
+}
+
+.network-guide.major {
+  stroke-width: 1.25;
+}
+
+.network-guide.minor {
+  stroke-width: 1;
+  opacity: 0.65;
+}
+
+.network-path {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.tx-path {
+  stroke-width: 1.35;
+}
+
+.rx-path {
+  stroke-width: 1.9;
+}
+
+.process-scroll-region {
+  position: relative;
+  height: 96px;
+  min-height: 96px;
+  max-height: 96px;
+  margin: 0 -12px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.process-table {
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  min-width: 0;
+  overflow: auto;
+  scrollbar-width: none;
+}
+
+.process-table::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.process-row {
+  display: grid;
+  grid-template-columns: 64px 58px minmax(0, 1fr);
+  align-items: center;
+  box-sizing: border-box;
+  height: 24px;
+  min-height: 24px;
+  max-height: 24px;
+  overflow: hidden;
+  border-bottom: none;
+  font-size: 11px;
+  line-height: 20px;
+}
+
+.process-row > span {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 0;
+  box-sizing: border-box;
+  height: 24px;
+  padding: 2px 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 20px;
+  text-align: left;
+}
+
+.process-row > span:last-child {
+  justify-content: flex-start;
+  padding-right: 0;
+  text-align: left;
+}
+
+.process-row > span:nth-child(1),
+.process-row > span:nth-child(2) {
+  justify-content: center;
+  text-align: center;
+}
+
+.process-row > span:last-child .metric-hover-detail-text {
+  text-align: left;
+}
+
+.process-empty {
+  min-height: 96px;
+}
+
+.disk-table {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.disk-scroll-region {
+  position: relative;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  flex: 1 1 0;
+  overflow: hidden;
+}
+
+.disk-body {
+  height: 100%;
+  min-width: 0;
+  width: 100%;
+  overflow: auto;
+  scrollbar-width: none;
+}
+
+.disk-body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.disk-head {
+  display: grid;
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+  box-sizing: border-box;
+  flex: 0 0 25px;
+  min-width: 0;
+  width: 100%;
+  height: 25px;
+  border-bottom: 1px solid var(--border-light);
+  font-size: 13px;
+  position: relative;
+  z-index: 1;
+  background: var(--theme-sidebar-background, var(--bg-sidebar));
+}
+
+.disk-row {
+  display: grid;
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+  height: 24px;
+  border-bottom: none;
+  font-size: 13px;
+}
+
+.disk-head {
+  font-weight: 600;
+  height: 25px;
+}
+
+.disk-head span,
+.disk-row span {
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 0 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+  line-height: 24px;
+  text-align: left;
+}
+
+.disk-head span:nth-child(2),
+.disk-row span:nth-child(2) {
+  font-variant-numeric: tabular-nums;
+}
+
+.fs-main {
+  grid-column: 2;
+  grid-row: 2;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+}
+
+.fs-shell.has-window-menubar .fs-main {
+  grid-row: 3;
+}
+
+.fs-main.full-width {
+  grid-column: 1 / 3;
+}
+
+.fs-main.no-status {
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.fs-main.has-status {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.fs-main.no-status .workspace-stage {
+  grid-row: 1;
+}
+
+.fs-main.has-status .status-message {
+  grid-row: 1;
+}
+
+.fs-main.has-status .workspace-stage {
+  grid-row: 2;
+}
+
+.fs-tabbar {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: stretch;
+  position: relative;
+  -webkit-app-region: drag;
+}
+
+.fs-shell.has-window-menubar .fs-tabbar {
+  grid-row: 2;
+  height: var(--window-tabbar-height);
+}
+
+/* Overview sorting owns the pointer stream. Keep the renderer/native window
+ * chrome out of the drag-region path while a card is being sorted. */
+:root.transterm-pointer-sorting .fs-tabbar,
+:root.transterm-pointer-sorting .fs-tabbar *,
+:root.transterm-pointer-sorting .window-menubar,
+:root.transterm-pointer-sorting .window-menubar * {
+  -webkit-app-region: no-drag;
+}
+
+.fs-tabbar::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 20;
+  height: 1px;
+  pointer-events: none;
+}
+
+.titlebar-brand,
+.titlebar-tabarea {
+  min-width: 0;
+}
+
+.titlebar-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+  position: relative;
+  border-right: 1px solid var(--titlebar-brand-divider);
+  --titlebar-brand-divider: var(--border-light);
+}
+
+.titlebar-brand.has-home-brand-content {
+  gap: 8px;
+}
+
+:root[data-platform='darwin'] .titlebar-brand {
+  padding-left: 86px;
+}
+
+.titlebar-brand strong {
+  overflow: hidden;
+  font-family:
+    'Outfit',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-left: 2px;
+}
+
+:root[data-runtime='tauri'][data-platform='darwin'] .titlebar-brand strong {
+  /* Keep the Tauri wordmark on the native AppKit title-bar baseline. The
+     traffic lights are calibrated independently in Rust; this is only the
+     optical adjustment for the renderer-owned brand glyph. */
+  position: relative;
+  top: 0;
+  font-size: 16px;
+}
+
+.titlebar-tabarea {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.titlebar-home-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.titlebar-home-brand strong,
+.titlebar-home-brand span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.titlebar-home-brand strong {
+  font-family:
+    'Outfit',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1;
+}
+
+.titlebar-home-brand span {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  opacity: 0.68;
+}
+
+.tabbar-folder-button,
+.add-tab,
+.window-tools span,
+.flat-button,
+.file-toolbar button,
+.terminal-tools button,
+.tab-close,
+.row-delete,
+.icon-button {
+  border: 1px solid var(--border-light);
+}
+
+.tabbar-folder-button {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border-width: 0 1px 0 0;
+  -webkit-app-region: no-drag;
+}
+
+.fs-tabs {
+  display: flex;
+  align-items: flex-end;
+  min-width: 0;
+  padding-left: 0;
+  gap: 4px;
+  position: relative;
+  bottom: -1px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.fs-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.fs-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-width: 132px;
+  max-width: 220px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  font-size: 13px;
+  font-weight: 500;
+  -webkit-app-region: no-drag;
+}
+
+.fs-tab strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fs-tab.active {
+  border: 1px solid var(--border-light);
+}
+
+.fs-tab.active:first-child {
+  border-left-color: transparent;
+}
+
+.tab-close,
+.row-delete,
+.icon-button {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  display: grid;
+  place-items: center;
+  -webkit-app-region: no-drag;
+}
+
+.tab-close {
+  font-size: 16px;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0 2px 0 !important;
+  line-height: 1;
+}
+
+.add-tab {
+  width: 36px;
+  height: 32px;
+  border: none;
+  font-size: 20px;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  -webkit-app-region: no-drag;
+}
+
+.window-tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 12px 0 4px;
+  font-size: 18px;
+}
+
+.window-tools span,
+.window-tools button {
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.window-tools button {
+  padding: 0;
+  -webkit-app-region: no-drag;
+}
+
+.window-tools button .material-symbols-outlined {
+  font-size: 16px;
+  font-variation-settings:
+    'wght' 300,
+    'opsz' 16,
+    'GRAD' 0,
+    'FILL' 0;
+}
+
+.status-message {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-light);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.status-message-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.status-message-close {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+}
+
+.workspace-stage {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex: 1;
+}
+
+.workspace-stage > * {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.workspace-stage-transition {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.workspace-stage-transition > * {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.workspace-content-stack {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.workspace-content-stack__item {
+  position: absolute;
+  inset: 0;
+  /* Keep the workspace root constrained after keep-alive moves it out of the
+     normal flex flow; its own scroll regions then receive a definite height. */
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.workspace-content-stack__item > * {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.workspace-content-stack__item.is-active {
+  visibility: visible;
+  pointer-events: auto;
+  z-index: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .workspace-stage-transition.is-transitioning .workspace-content-stack__item.is-active > :not(.home-workspace),
+  .workspace-stage-transition.is-transitioning .workspace-content-stack__item.is-active .home-content-body {
+    animation: workspace-stage-fade-in 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}
+
+@keyframes workspace-stage-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

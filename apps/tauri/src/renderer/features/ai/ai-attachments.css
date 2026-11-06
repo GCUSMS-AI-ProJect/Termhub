@@ -1,0 +1,89 @@
+.ai-attachment-input {
+  display: none;
+}
+.ai-attachment-add.ft-btn {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  padding: 0;
+  border-radius: 7px;
+}
+.ai-attachment-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px 0;
+  min-width: 0;
+}
+.ai-attachment-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--surface-card);
+  color: var(--text-primary);
+}
+.ai-attachment-chip > img {
+  border-radius: 6px;
+  object-fit: cover;
+}
+.ai-attachment-chip > .ft-btn {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  padding: 0;
+}
+.ai-attachment-name {
+  display: block;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-sm);
+}
+.ai-attachment-name small,
+.ai-attachment-history small {
+  display: block;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+.ai-message-attachments {
+  padding: 4px 0 0;
+}
+.ai-attachment-history.ft-btn {
+  text-align: left;
+  max-width: 240px;
+  padding: 8px 12px;
+  height: auto;
+}
+.ai-attachment-history > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ai-attachment-preview img {
+  max-width: 100%;
+  max-height: 60vh;
+  object-fit: contain;
+}
+.ai-attachment-preview pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 60vh;
+  overflow-y: auto;
+  scrollbar-width: none;
+  margin: 0;
+}
+.ai-attachment-preview pre::-webkit-scrollbar {
+  display: none;
+}
+.ai-attachment-preview-scroll {
+  position: relative;
+}
+.ai-attachment-error {
+  margin: 6px 12px;
+  color: var(--status-danger);
+  font-size: var(--font-size-xs);
+}

@@ -1,0 +1,343 @@
+/* A quiet, theme-aware shell around the conversation and its composer. */
+.ai-copilot-panel {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--surface-card) 94%, var(--surface-sidebar));
+  border-left-color: var(--border-subtle);
+}
+
+.ai-copilot-panel .ai-copilot-header {
+  padding-inline: 14px 10px;
+  border-bottom-color: var(--border-subtle);
+  background: transparent;
+}
+
+.ai-copilot-panel .ai-copilot-title {
+  gap: 9px;
+}
+
+.ai-copilot-panel .ai-copilot-title > .ai-icon {
+  padding: 5px;
+  box-sizing: content-box;
+  border-radius: 10px;
+  background: var(--surface-chip);
+  color: var(--text-primary);
+}
+
+.ai-copilot-panel .ai-copilot-title strong {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+}
+
+.ai-copilot-panel .ai-copilot-header-actions {
+  gap: 3px;
+}
+
+.ai-copilot-panel .ai-copilot-icon-button {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  color: var(--text-secondary);
+  border-color: transparent;
+  background: transparent;
+}
+
+.ai-copilot-panel .ai-copilot-icon-button[aria-pressed='true'] {
+  background: var(--surface-active);
+  color: var(--text-primary);
+}
+
+.ai-copilot-panel .ai-workspace-selector {
+  margin: 8px 10px 0;
+  padding: 2px 6px;
+  gap: 2px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-panel) 65%, transparent);
+}
+
+.ai-copilot-panel .ai-workspace-select.dropdown-select-trigger {
+  padding-inline: 5px;
+  font-size: var(--font-size-sm);
+}
+
+.ai-copilot-panel .ai-copilot-chat-meta,
+.ai-copilot-panel .ai-copilot-conversation-page-header {
+  background: transparent;
+  border: 0;
+}
+
+.ai-copilot-panel .ai-copilot-conversation-page-header {
+  padding: 10px 12px 6px;
+}
+
+.ai-copilot-panel .ai-copilot-conversation-page-title > strong {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.ai-copilot-panel .ai-copilot-conversation-back {
+  border: 0;
+  background: transparent;
+  border-radius: 8px;
+  color: var(--text-secondary);
+}
+
+.ai-copilot-panel .ai-copilot-conversation-actions button {
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+}
+
+.ai-copilot-panel .ai-copilot-content {
+  background: transparent;
+}
+
+.ai-copilot-panel .ai-copilot-composer-area {
+  padding: 4px 12px 12px;
+  border: 0;
+  background: transparent;
+}
+
+.ai-copilot-panel .ai-copilot-composer-zone {
+  margin: 0;
+  padding: 9px 11px 10px;
+  gap: 8px;
+  border: 1px solid var(--border-default);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface-input) 82%, var(--surface-card));
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--border-subtle) 25%, transparent);
+  transition:
+    border-color 160ms ease,
+    box-shadow 180ms ease,
+    background 160ms ease;
+}
+
+.ai-copilot-panel .ai-copilot-composer-zone:focus-within {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--focus-outline) 13%, transparent);
+}
+
+.ai-copilot-panel .ai-copilot-context-dock {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.ai-copilot-panel .ai-copilot-context-dock-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
+.ai-copilot-panel .ai-copilot-context-switch {
+  height: 28px;
+  padding: 0 7px;
+  border-radius: 8px;
+  font-size: var(--font-size-xs);
+  border: 0;
+  background: var(--surface-chip);
+  color: var(--text-secondary);
+}
+
+.ai-copilot-panel .ai-copilot-context-switch.is-active {
+  background: var(--surface-active);
+  color: var(--text-primary);
+}
+
+.ai-copilot-panel .ai-copilot-context-caption {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.ai-copilot-panel .ai-copilot-composer textarea {
+  box-sizing: border-box;
+  min-height: 74px;
+  max-height: 180px;
+  padding: 3px 2px;
+  scrollbar-width: thin;
+  color: var(--text-primary);
+  font-size: var(--font-size-chat);
+  line-height: 1.65;
+}
+
+.ai-copilot-panel .ai-copilot-composer-toolbar-actions {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 5px;
+  row-gap: 7px;
+}
+
+.ai-copilot-panel .ai-copilot-composer-models {
+  flex: 1 0 100%;
+  order: -1;
+  flex-wrap: nowrap;
+  overflow: visible;
+  gap: 3px;
+}
+
+.ai-copilot-panel .ai-copilot-composer-model-divider {
+  display: none;
+}
+
+.ai-copilot-panel .ai-copilot-composer-select.dropdown-select-trigger {
+  height: 30px;
+  min-height: 30px;
+  padding-inline: 7px;
+  gap: 4px;
+  font-size: var(--font-size-xs);
+  border-radius: 8px;
+  color: var(--text-secondary);
+}
+
+.ai-copilot-panel .ai-copilot-model-picker.dropdown-select-trigger {
+  flex: 1 1 auto;
+  width: 0;
+  max-width: none;
+  color: var(--text-primary);
+}
+
+.ai-copilot-model-picker .dropdown-select-value > span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ai-copilot-panel .ai-copilot-composer-select .dropdown-select-arrow {
+  display: block;
+  width: 12px;
+  opacity: 0.65;
+}
+
+.ai-copilot-panel .ai-copilot-reasoning-select.dropdown-select-trigger,
+.ai-copilot-panel .ai-copilot-mode-select.dropdown-select-trigger {
+  flex: 0 0 auto;
+  max-width: 112px;
+}
+
+.context-menu.ai-model-picker-menu {
+  width: min(360px, calc(100vw - 16px));
+  min-width: 250px;
+  max-width: min(380px, calc(100vw - 16px));
+}
+
+.ai-model-picker-menu button.has-custom-content {
+  height: auto;
+  min-height: 48px;
+  padding: 8px 10px;
+  white-space: normal;
+}
+
+.ai-model-picker-menu button > .ai-model-picker-option {
+  display: flex;
+}
+
+.ai-model-picker-option > .ai-icon {
+  flex-shrink: 0;
+}
+
+.ai-model-picker-option,
+.ai-model-picker-option > span {
+  display: flex;
+  min-width: 0;
+  gap: 4px;
+}
+
+.ai-model-picker-option {
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  padding-block: 3px;
+  gap: 16px;
+}
+
+.ai-model-picker-option > span {
+  flex-direction: column;
+}
+
+.ai-model-picker-option strong {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.ai-model-picker-option small {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.ai-model-picker-menu button:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: -2px;
+}
+
+.ai-copilot-panel .ai-copilot-composer-send {
+  margin-left: auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.ai-copilot-panel .ai-copilot-dangerous-command-dock {
+  background: transparent;
+  border: 0;
+  padding-inline: 12px;
+}
+
+.ai-copilot-panel button {
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    transform 120ms ease;
+}
+
+.ai-copilot-panel button:enabled:active {
+  transform: scale(0.96);
+}
+
+.ai-copilot-panel button:focus-visible {
+  outline: 2px solid var(--focus-outline);
+  outline-offset: 2px;
+}
+
+@container ai-copilot (max-width: 360px) {
+  .ai-copilot-panel .ai-copilot-context-caption {
+    display: none;
+  }
+
+  .ai-copilot-panel .ai-copilot-composer-area {
+    padding-inline: 9px;
+  }
+
+  .ai-copilot-panel .ai-copilot-composer-models {
+    flex-wrap: wrap;
+  }
+
+  .ai-copilot-panel .ai-copilot-model-picker.dropdown-select-trigger {
+    flex-basis: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-copilot-panel,
+  .ai-copilot-panel *,
+  .ai-copilot-panel *::before,
+  .ai-copilot-panel *::after,
+  .ai-copilot-toolbar-menu,
+  .ai-copilot-mode-menu {
+    animation: none;
+    transition: none;
+    scroll-behavior: auto;
+  }
+
+  .ai-copilot-panel button:enabled:active {
+    transform: none;
+  }
+}

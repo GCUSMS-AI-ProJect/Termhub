@@ -1,0 +1,161 @@
+[package]
+name = "transterm"
+version = "2.3.1-beta.10"
+description = "TermHub desktop workspace"
+authors = ["FileTerm"]
+edition = "2021"
+
+[features]
+windows-scheduler-fixture = []
+
+[lib]
+name = "transterm_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# Ubuntu and other modern Linux desktops default to Wayland. Keep the
+# data-control backend enabled so terminal copy/paste does not fall back to an
+# unavailable X11 clipboard in a pure Wayland session.
+arboard = { version = "3", features = ["wayland-data-control"] }
+open = "5"
+keepawake = "0.6.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+semver = "1"
+tauri = { version = "2", features = ["tray-icon", "image-png", "image-ico", "macos-private-api"] }
+tauri-plugin-updater = "2"
+thiserror = "2"
+url = "2"
+uuid = { version = "1", features = ["v4"] }
+russh = "0.63.1"
+russh-sftp = "2.3"
+async-trait = "0.1"
+tokio = { version = "1", features = ["full"] }
+tokio-util = { version = "0.7", features = ["rt"] }
+regex = "1"
+encoding_rs = "0.8"
+rfd = "0.17"
+sha2 = "0.10"
+hmac = "0.12"
+subtle = "2.6"
+base64 = "0.22"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+aes-gcm = "0.11"
+argon2 = "0.6.0-rc.8"
+zeroize = "1.8"
+flate2 = "1"
+tracing = "0.1"
+tracing-log = "0.2"
+tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "registry"] }
+tokio-socks = "0.5"
+tokio-serial = "5.5"
+zmodem2 = "0.7.2"
+suppaftp = { version = "10", default-features = false, features = ["tokio-async-native-tls", "deprecated"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+portable-pty = "0.9"
+sys-locale = "0.3.2"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+raw-window-handle = "0.6"
+webview2-com = "0.38"
+image = { version = "0.25", default-features = false, features = ["png"] }
+windows-core = "0.61"
+windows = { version = "0.61", features = [
+  "Win32_Foundation",
+  "Win32_Graphics_Gdi",
+  "Win32_System_Com",
+  "Win32_System_Com_StructuredStorage",
+  "Win32_System_DataExchange",
+  "Win32_System_Memory",
+  "Win32_System_Ole",
+  "Win32_System_SystemServices",
+  "Win32_Storage_FileSystem",
+  "Win32_UI_Input_KeyboardAndMouse",
+  "Win32_UI_HiDpi",
+  "Win32_UI_Shell",
+  "Win32_UI_Shell_Common",
+  "Win32_UI_WindowsAndMessaging",
+] }
+windows-sys = { version = "0.61", features = [
+  "Win32_Devices_Communication",
+  "Win32_Foundation",
+  "Win32_Graphics_Dwm",
+  "Win32_NetworkManagement_NetManagement",
+  "Win32_NetworkManagement_WNet",
+  "Win32_Storage_FileSystem",
+  "Win32_Security",
+  "Win32_System_JobObjects",
+  "Win32_System_Diagnostics_ToolHelp",
+  "Win32_System_Diagnostics_Etw",
+  "Win32_System_Power",
+  "Win32_System_ProcessStatus",
+  "Win32_System_Registry",
+  "Win32_System_SystemInformation",
+  "Win32_System_SystemServices",
+  "Win32_System_Threading",
+  "Win32_System_Time",
+  "Win32_UI_WindowsAndMessaging",
+] }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = { version = "0.6", default-features = false, features = ["std"] }
+objc2-foundation = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "NSArray",
+  "NSData",
+  "NSAttributedString",
+  "NSDictionary",
+  "NSError",
+  "NSGeometry",
+  "NSProcessInfo",
+  "NSOperation",
+  "NSString",
+  "NSURL",
+  "NSUserDefaults",
+] }
+objc2-app-kit = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "NSApplication",
+  "NSImage",
+  "NSAttributedString",
+  "NSButton",
+  "NSCell",
+  "NSAppearance",
+  "NSColor",
+  "NSControl",
+  "NSEvent",
+  "NSView",
+  "NSWindow",
+  "NSWorkspace",
+  "block2",
+  "objc2-quartz-core",
+] }
+block2 = { version = "0.6.2", default-features = false, features = ["alloc"] }
+objc2-quartz-core = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "CALayer",
+  "CATransaction",
+  "CATransform3D",
+  "objc2-core-foundation",
+] }
+raw-window-handle = "0.6"
+window-vibrancy = "0.6"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+# Tauri exposes the native GTK window on Linux. Keep this target-scoped so the
+# tray restore path can request a real desktop activation without affecting
+# macOS or Windows builds.
+gtk = { version = "0.18", features = ["v3_24"] }
+gdk = "0.18"
+
+[dev-dependencies]
+rand = "0.10"
+
+[patch.crates-io]
+russh = { path = "../../../vendor/russh" }

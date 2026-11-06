@@ -1,0 +1,28 @@
+.system-sidebar-layout {
+  position: relative;
+}
+.monitoring-toggle-icon {
+  display: block;
+  width: 10px;
+  height: 10px;
+  background-color: currentColor;
+  mask: url('../../assets/icons/system/power.svg') center / contain no-repeat;
+  -webkit-mask: url('../../assets/icons/system/power.svg') center / contain no-repeat;
+}
+.monitoring-toggle[data-stopped='true'] .monitoring-toggle-icon {
+  opacity: 0.5;
+}
+.system-sidebar-layout:not(.is-collapsed) > .monitoring-overlay {
+  top: 78px;
+}
+.monitoring-control-error {
+  position: absolute;
+  top: 0;
+  right: calc(100% + 8px);
+  width: 160px;
+  z-index: 4;
+  padding: 6px;
+  background: var(--surface-panel);
+  color: var(--status-danger);
+  font-size: 12px;
+}

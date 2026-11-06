@@ -1,0 +1,555 @@
+name: Release Tauri
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  validate-release-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Validate tag source branch
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            echo "Manual workflow dispatch: skip release branch tag validation."
+            exit 0
+          fi
+
+          git fetch --prune origin '+refs/heads/release/*:refs/remotes/origin/release/*'
+          tag_commit="$(git rev-list -n 1 "${GITHUB_REF_NAME}")"
+          release_branches="$(git branch -r --contains "${tag_commit}" | sed 's/^[*[:space:]]*//' | grep '^origin/release/' || true)"
+
+          if [ -z "${release_branches}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not point to a commit on any origin/release/* branch."
+            exit 1
+          fi
+
+          echo "Validated release tag on branch: $(printf '%s\n' "${release_branches}" | head -n 1)"
+
+  build-macos-arm64:
+    needs: validate-release-tag
+    runs-on: macos-26
+    env:
+      TAURI_BUNDLER_DMG_IGNORE_CI: 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build shared packages and typecheck Tauri
+        run: |
+          npm run build:packages
+          npm run typecheck -w @transterm/tauri
+
+      - name: Package macOS Apple Silicon
+        run: npm run release:mac -w @transterm/tauri
+
+      - name: Normalize macOS Apple Silicon artifact name
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle_dir="apps/tauri/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg"
+          source_file="$(find "$bundle_dir" -maxdepth 1 -type f -name '*.dmg' -print -quit)"
+          test -n "$source_file"
+          mv "$source_file" "$bundle_dir/transterm-${GITHUB_REF_NAME#v}-macos-arm64.dmg"
+
+      - name: Verify macOS package
+        shell: bash
+        run: test -n "$(find apps/tauri/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg -name '*.dmg' -print -quit)"
+
+      - name: Verify Apple Silicon DMG Finder layout
+        shell: bash
+        run: bash scripts/verify-macos-dmg-finder-layout.sh "apps/tauri/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/transterm-${GITHUB_REF_NAME#v}-macos-arm64.dmg"
+
+      - name: Upload macOS Apple Silicon artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: transterm-macOS-arm64
+          path: apps/tauri/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+
+  build-macos-x64:
+    needs: validate-release-tag
+    runs-on: macos-26-intel
+    env:
+      TAURI_BUNDLER_DMG_IGNORE_CI: 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build shared packages and typecheck Tauri
+        run: |
+          npm run build:packages
+          npm run typecheck -w @transterm/tauri
+
+      - name: Package macOS Intel
+        run: npm run release:mac:x64 -w @transterm/tauri
+
+      - name: Normalize macOS Intel artifact name
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle_dir="apps/tauri/src-tauri/target/x86_64-apple-darwin/release/bundle/dmg"
+          source_file="$(find "$bundle_dir" -maxdepth 1 -type f -name '*.dmg' -print -quit)"
+          test -n "$source_file"
+          mv "$source_file" "$bundle_dir/transterm-${GITHUB_REF_NAME#v}-macos-x64.dmg"
+
+      - name: Verify macOS package
+        shell: bash
+        run: test -n "$(find apps/tauri/src-tauri/target/x86_64-apple-darwin/release/bundle/dmg -name '*.dmg' -print -quit)"
+
+      - name: Verify Intel DMG Finder layout
+        shell: bash
+        run: bash scripts/verify-macos-dmg-finder-layout.sh "apps/tauri/src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/transterm-${GITHUB_REF_NAME#v}-macos-x64.dmg"
+
+      - name: Upload macOS Intel artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: transterm-macOS-x64
+          path: apps/tauri/src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+
+  build-windows:
+    needs: validate-release-tag
+    strategy:
+      matrix:
+        include:
+          - arch: x64
+            runner: windows-latest
+            target: x86_64-pc-windows-msvc
+            installer-script: release:win
+            portable-script: release:win:portable
+          - arch: arm64
+            runner: windows-11-vs2026-arm
+            target: aarch64-pc-windows-msvc
+            installer-script: release:win:arm64
+            portable-script: release:win:portable:arm64
+    runs-on: ${{ matrix.runner }}
+    env:
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build shared packages and typecheck Tauri
+        run: |
+          npm run build:packages
+          npm run typecheck -w @transterm/tauri
+
+      - name: Require the updater signing key
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY)) {
+            throw 'Missing repository secret TAURI_SIGNING_PRIVATE_KEY. See README release prerequisites.'
+          }
+
+      - name: Package signed Windows installer and updater signature
+        run: npm run ${{ matrix.installer-script }} -w @transterm/tauri
+
+      - name: Package self-identifying portable Windows executable
+        shell: pwsh
+        env:
+          TRANSTERM_PORTABLE_BUILD: '1'
+        run: npm run ${{ matrix.portable-script }} -w @transterm/tauri
+
+      - name: Normalize Windows installer artifact names
+        shell: pwsh
+        env:
+          WINDOWS_TARGET: ${{ matrix.target }}
+          WINDOWS_ASSET_ARCH: ${{ matrix.arch }}
+        run: |
+          $bundleDir = "apps/tauri/src-tauri/target/$env:WINDOWS_TARGET/release/bundle/nsis"
+          $releaseDir = "apps/tauri/src-tauri/target/$env:WINDOWS_TARGET/release"
+          $version = $env:GITHUB_REF_NAME.TrimStart('v')
+          $installer = Get-ChildItem -LiteralPath $bundleDir -Filter '*-setup.exe' -File | Select-Object -First 1
+          if (-not $installer) { throw 'NSIS installer was not generated.' }
+          $signature = Get-Item -LiteralPath ($installer.FullName + '.sig')
+          $targetName = "TermHub-$version-windows-$($env:WINDOWS_ASSET_ARCH)-setup.exe"
+          Move-Item -LiteralPath $installer.FullName -Destination (Join-Path $bundleDir $targetName)
+          Move-Item -LiteralPath $signature.FullName -Destination (Join-Path $bundleDir "$targetName.sig")
+
+          $portableBinary = Join-Path $releaseDir 'TermHub.exe'
+          if (-not (Test-Path -LiteralPath $portableBinary -PathType Leaf)) {
+            throw "Portable Windows binary was not generated: $portableBinary"
+          }
+          $portableTarget = Join-Path $bundleDir "TermHub-$version-windows-$($env:WINDOWS_ASSET_ARCH)-portable.exe"
+          Copy-Item -LiteralPath $portableBinary -Destination $portableTarget -Force
+          if (-not (Test-Path -LiteralPath $portableTarget -PathType Leaf)) {
+            throw "Portable Windows executable was not generated: $portableTarget"
+          }
+
+      - name: Sign portable Windows updater payload
+        shell: pwsh
+        env:
+          WINDOWS_TARGET: ${{ matrix.target }}
+        run: |
+          $bundleDir = "apps/tauri/src-tauri/target/$env:WINDOWS_TARGET/release/bundle/nsis"
+          $portable = Get-ChildItem -LiteralPath $bundleDir -Filter '*-portable.exe' -File | Select-Object -First 1
+          if (-not $portable) { throw 'Portable Windows executable was not generated.' }
+          npx tauri signer sign $portable.FullName
+          if ($LASTEXITCODE -ne 0) { throw 'Portable updater signing failed.' }
+
+      - name: Verify Windows updater artifacts
+        shell: pwsh
+        env:
+          WINDOWS_TARGET: ${{ matrix.target }}
+          WINDOWS_ASSET_ARCH: ${{ matrix.arch }}
+        run: |
+          $bundleDir = "apps/tauri/src-tauri/target/$env:WINDOWS_TARGET/release/bundle/nsis"
+          $installer = Get-ChildItem -LiteralPath $bundleDir -Filter "*-windows-$($env:WINDOWS_ASSET_ARCH)-setup.exe" -File
+          $portable = Get-ChildItem -LiteralPath $bundleDir -Filter "*-windows-$($env:WINDOWS_ASSET_ARCH)-portable.exe" -File
+          if (-not $installer) { throw 'NSIS installer was not generated.' }
+          if (-not (Test-Path -LiteralPath ($installer.FullName + '.sig') -PathType Leaf)) { throw 'NSIS updater signature was not generated.' }
+          if (-not $portable) { throw 'Portable Windows executable was not generated.' }
+          if (-not (Test-Path -LiteralPath ($portable.FullName + '.sig') -PathType Leaf)) { throw 'Portable updater signature was not generated.' }
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: transterm-Windows-${{ matrix.arch }}
+          path: |
+            apps/tauri/src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*.exe
+            apps/tauri/src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*.sig
+          if-no-files-found: error
+
+  build-linux:
+    needs: validate-release-tag
+    strategy:
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            script: release:linux
+            deb-arch: amd64
+            rpm-arch: x86_64
+          - arch: arm64
+            runner: ubuntu-22.04-arm
+            target: aarch64-unknown-linux-gnu
+            script: release:linux:arm64
+            deb-arch: arm64
+            rpm-arch: aarch64
+    # Build natively on Ubuntu 22.04 for a compatible glibc baseline. AppImage
+    # tooling does not support ARM cross-compilation, so ARM uses an ARM runner.
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install Linux Tauri dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf libfuse2 file squashfs-tools zsync rpm cpio desktop-file-utils appstream
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build shared packages and typecheck Tauri
+        run: |
+          npm run build:packages
+          npm run typecheck -w @transterm/tauri
+
+      - name: Package Linux DEB, RPM and AppImage
+        run: npm run ${{ matrix.script }} -w @transterm/tauri
+
+      - name: Normalize Linux artifact names
+        shell: bash
+        env:
+          LINUX_TARGET: ${{ matrix.target }}
+          LINUX_ASSET_ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          bundle_root="apps/tauri/src-tauri/target/${LINUX_TARGET}/release/bundle"
+          version="${GITHUB_REF_NAME#v}"
+
+          deb_file="$(find "$bundle_root/deb" -maxdepth 1 -type f -name '*.deb' -print -quit)"
+          test -n "$deb_file"
+          mv "$deb_file" "$bundle_root/deb/transterm-${version}-linux-${LINUX_ASSET_ARCH}.deb"
+
+          rpm_file="$(find "$bundle_root/rpm" -maxdepth 1 -type f -name '*.rpm' -print -quit)"
+          test -n "$rpm_file"
+          mv "$rpm_file" "$bundle_root/rpm/transterm-${version}-linux-${LINUX_ASSET_ARCH}.rpm"
+
+          appimage_file="$(find "$bundle_root/appimage" -maxdepth 1 -type f -name '*.AppImage' -print -quit)"
+          test -n "$appimage_file"
+          mv "$appimage_file" "$bundle_root/appimage/transterm-${version}-linux-${LINUX_ASSET_ARCH}.AppImage"
+
+      - name: Build Debian 11 compatible universal amd64 DEB
+        if: matrix.arch == 'x86_64'
+        shell: bash
+        env:
+          LINUX_TARGET: ${{ matrix.target }}
+          LINUX_ASSET_ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          bundle_root="apps/tauri/src-tauri/target/${LINUX_TARGET}/release/bundle"
+          version="${GITHUB_REF_NAME#v}"
+          deb_file="$bundle_root/deb/transterm-${version}-linux-${LINUX_ASSET_ARCH}.deb"
+          output_dir="$bundle_root/deb/universal-output"
+          mkdir -p "$output_dir"
+
+          docker run --rm --platform linux/amd64 \
+            --volume "$GITHUB_WORKSPACE:/workspace" \
+            --workdir /workspace \
+            ubuntu:22.04 bash -euc '
+              export DEBIAN_FRONTEND=noninteractive
+              apt-get update
+              apt-get install -y --no-install-recommends \
+                libwebkit2gtk-4.1-0 libgtk-3-0 libayatana-appindicator3-1 \
+                libssl3 libgl1-mesa-dri patchelf python3
+              python3 apps/tauri/scripts/build-universal-deb.py \
+                "$1" "$2"
+            ' _ "/workspace/$deb_file" "/workspace/$output_dir"
+
+          cp "$output_dir/transterm-${version}-linux-${LINUX_ASSET_ARCH}.deb" "$deb_file"
+
+      - name: Install and smoke-test the universal DEB on Debian 11
+        if: matrix.arch == 'x86_64'
+        shell: bash
+        env:
+          LINUX_TARGET: ${{ matrix.target }}
+          LINUX_ASSET_ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          deb_file="${GITHUB_WORKSPACE}/apps/tauri/src-tauri/target/${LINUX_TARGET}/release/bundle/deb/transterm-${version}-linux-${LINUX_ASSET_ARCH}.deb"
+
+          docker run --rm --platform linux/amd64 \
+            --volume "$deb_file:/tmp/transterm.deb:ro" \
+            debian:bullseye-slim bash -euc '
+              export DEBIAN_FRONTEND=noninteractive
+              printf "%s\n" \
+                "deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20260903T220410Z bullseye main" \
+                "deb [check-valid-until=no] http://snapshot.debian.org/archive/debian-security/20260903T220410Z bullseye-security main" \
+                > /etc/apt/sources.list
+              rm -f /etc/apt/sources.list.d/*
+              apt-get update
+              apt-get install -y --no-install-recommends /tmp/transterm.deb
+              if ! trace="$(/bin/sh -x /usr/bin/transterm --help 2>&1)"; then
+                printf "Debian 11 transterm CLI smoke failed:\n%s\n" "$trace" >&2
+                exit 1
+              fi
+              if ! grep -Fq "+ exec /usr/lib/transterm/runtime/transterm --help" <<< "$trace"; then
+                printf "Debian 11 launcher did not select the private runtime:\n%s\n" "$trace" >&2
+                exit 1
+              fi
+              ! dpkg-query --show libwebkit2gtk-4.1-0 >/dev/null 2>&1
+              dpkg -V file-term
+            '
+
+          docker run --rm --platform linux/amd64 \
+            --volume "$deb_file:/tmp/transterm.deb:ro" \
+            ubuntu:22.04 bash -euc '
+              export DEBIAN_FRONTEND=noninteractive
+              apt-get update
+              apt-get install -y --no-install-recommends \
+                libwebkit2gtk-4.1-0 libayatana-appindicator3-1 libssl3 libgl1-mesa-dri \
+                /tmp/transterm.deb
+              if ! trace="$(/bin/sh -x /usr/bin/transterm --help 2>&1)"; then
+                printf "Ubuntu transterm CLI smoke failed:\n%s\n" "$trace" >&2
+                exit 1
+              fi
+              if ! grep -Fq "+ exec /usr/lib/transterm/transterm --help" <<< "$trace"; then
+                printf "Ubuntu launcher did not select the system runtime:\n%s\n" "$trace" >&2
+                exit 1
+              fi
+              dpkg -V file-term
+            '
+
+      - name: Prepare AppImage permissions and delta updates
+        shell: bash
+        env:
+          LINUX_TARGET: ${{ matrix.target }}
+          LINUX_ASSET_ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          channel="latest"
+          if [[ "$version" == *-* ]]; then
+            channel="latest-pre"
+          fi
+          appimage_file="apps/tauri/src-tauri/target/${LINUX_TARGET}/release/bundle/appimage/transterm-${version}-linux-${LINUX_ASSET_ARCH}.AppImage"
+          update_information="gh-releases-zsync|${GITHUB_REPOSITORY/\//|}|${channel}|transterm-*-linux-${LINUX_ASSET_ARCH}.AppImage.zsync"
+          bash scripts/ensure-appimage-executable.sh "$appimage_file" "$update_information"
+
+      - name: Verify Linux packages
+        shell: bash
+        env:
+          LINUX_TARGET: ${{ matrix.target }}
+          LINUX_ASSET_ARCH: ${{ matrix.arch }}
+          DEB_ARCH: ${{ matrix.deb-arch }}
+          RPM_ARCH: ${{ matrix.rpm-arch }}
+        run: |
+          set -euo pipefail
+          bundle_root="apps/tauri/src-tauri/target/${LINUX_TARGET}/release/bundle"
+          bash apps/tauri/scripts/verify-linux-package-metadata.sh \
+            "$bundle_root" "$DEB_ARCH" "$RPM_ARCH" "$RUNNER_TEMP"
+
+          appimage_file="$(find "$bundle_root/appimage" -maxdepth 1 -type f -name '*.AppImage' -print -quit)"
+          test -n "$appimage_file"
+          appimage_name="$(basename "$appimage_file")"
+          version="${GITHUB_REF_NAME#v}"
+          if [[ "$appimage_name" != "transterm-${version}-linux-${LINUX_ASSET_ARCH}.AppImage" ]]; then
+            echo "Unexpected AppImage asset name: $appimage_name" >&2
+            exit 1
+          fi
+          test -f "$appimage_file.zsync"
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: transterm-Linux-${{ matrix.arch }}
+          path: |
+            apps/tauri/src-tauri/target/${{ matrix.target }}/release/bundle/deb/*.deb
+            apps/tauri/src-tauri/target/${{ matrix.target }}/release/bundle/rpm/*.rpm
+            apps/tauri/src-tauri/target/${{ matrix.target }}/release/bundle/appimage/*.AppImage
+            apps/tauri/src-tauri/target/${{ matrix.target }}/release/bundle/appimage/*.AppImage.zsync
+          if-no-files-found: error
+
+  build-arch-packages:
+    needs: [validate-release-tag, build-linux]
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Download Linux package inputs
+        uses: actions/download-artifact@v7
+        with:
+          pattern: transterm-Linux-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/transterm-linux-inputs
+
+      - name: Build Arch and Arch Linux ARM packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          bash apps/tauri/scripts/build-arch-packages.sh \
+            "$version" \
+            "${RUNNER_TEMP}/transterm-linux-inputs" \
+            "${RUNNER_TEMP}/transterm-arch-output"
+
+      - name: Upload Arch packages
+        uses: actions/upload-artifact@v6
+        with:
+          name: transterm-Linux-Arch
+          path: ${{ runner.temp }}/transterm-arch-output/*.pkg.tar.zst
+          if-no-files-found: error
+
+  release:
+    needs: [validate-release-tag, build-macos-arm64, build-macos-x64, build-windows, build-linux, build-arch-packages]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Download release artifacts
+        uses: actions/download-artifact@v7
+
+      - name: Create combined Windows updater manifest
+        run: node ./apps/tauri/scripts/create-windows-updater-manifest.mjs --merge ./transterm-Windows-x64 ./transterm-Windows-arm64
+
+      - name: Publish GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          repo="${{ github.repository }}"
+          tag="${GITHUB_REF_NAME}"
+
+          if gh release view "${tag}" -R "${repo}" >/dev/null 2>&1; then
+            gh release delete "${tag}" -R "${repo}" --yes
+          fi
+
+          notes_file="docs/release-notes/release-notes-${tag#v}.md"
+          # Keep repository-authored release notes while retaining GitHub's
+          # generated What's Changed, Full Changelog, and Contributors blocks.
+          notes_flags=(--generate-notes)
+          if [ -f "${notes_file}" ]; then
+            notes_flags+=(--notes "$(cat "${notes_file}")")
+          fi
+          release_flags=()
+          if [[ "${tag}" == *-* ]]; then
+            release_flags+=(--prerelease)
+          fi
+
+          mapfile -d '' assets < <(find . -type f \( -name '*.dmg' -o -name '*.exe' -o -name '*.deb' -o -name '*.rpm' -o -name '*.pkg.tar.zst' -o -name '*.AppImage' -o -name '*.AppImage.zsync' -o -name '*.sig' -o -name '*.zip' -o -name 'latest.json' \) -print0)
+          if [ "${#assets[@]}" -eq 0 ]; then
+            echo 'No Tauri release assets were downloaded.'
+            exit 1
+          fi
+
+          gh release create "${tag}" -R "${repo}" --title "${tag}" \
+            "${release_flags[@]}" \
+            "${notes_flags[@]}" \
+            "${assets[@]}"

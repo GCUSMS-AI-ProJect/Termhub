@@ -1,0 +1,40 @@
+.fs-tabbar .titlebar-brand {
+  background: var(--surface-sidebar);
+}
+
+/* Window tools use bundled SVGs so hiding/restoring the window cannot flash a
+ * Material Symbols ligature while the font is re-rasterized. Keep these
+ * selectors above the generic `.window-tools span` skin rules. */
+:root .fs-tabbar .window-tools button .window-tool-icon {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 0;
+  background-color: currentColor;
+  cursor: inherit;
+  transition: none;
+}
+
+:root .fs-tabbar .window-tools button:hover .window-tool-icon {
+  background-color: currentColor;
+}
+
+.window-tool-icon--open-in-full {
+  mask: url('../../assets/icons/navigation/open_in_full.svg') center / contain no-repeat;
+  -webkit-mask: url('../../assets/icons/navigation/open_in_full.svg') center / contain no-repeat;
+}
+
+.window-tool-icon--close-fullscreen {
+  mask: url('../../assets/icons/navigation/close_fullscreen.svg') center / contain no-repeat;
+  -webkit-mask: url('../../assets/icons/navigation/close_fullscreen.svg') center / contain no-repeat;
+}
+
+.window-tool-icon--auto-awesome {
+  mask: url('../../assets/icons/system/auto_awesome.svg') center / contain no-repeat;
+  -webkit-mask: url('../../assets/icons/system/auto_awesome.svg') center / contain no-repeat;
+}
+
+.window-tool-icon--settings {
+  mask: url('../../assets/icons/system/settings.svg') center / contain no-repeat;
+  -webkit-mask: url('../../assets/icons/system/settings.svg') center / contain no-repeat;
+}

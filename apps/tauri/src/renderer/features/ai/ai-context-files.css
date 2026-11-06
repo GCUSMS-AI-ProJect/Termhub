@@ -1,0 +1,254 @@
+.ai-context-files {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  color: var(--text-secondary);
+}
+.ai-context-files label {
+  display: grid;
+  gap: 5px;
+  font-size: var(--font-size-sm);
+}
+.ai-context-files input {
+  min-width: 0;
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--surface-input);
+  color: var(--text-primary);
+  font: inherit;
+}
+.ai-context-file-actions {
+  display: flex;
+  gap: 8px;
+}
+.ai-context-files button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-panel);
+  color: var(--text-primary);
+  font: inherit;
+}
+.ai-context-files button:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+.ai-context-file-list-wrap,
+.ai-context-file-preview-wrap {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: 9px;
+}
+.ai-context-file-list {
+  display: grid;
+  gap: 4px;
+  max-height: 200px;
+  overflow: auto;
+  padding: 6px 16px 6px 6px;
+  scrollbar-width: none;
+}
+.ai-context-file-list button {
+  border: 0;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.ai-context-file-range {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+}
+.ai-context-file-range label {
+  flex: 1;
+  min-width: 0;
+}
+.ai-context-file-preview-wrap pre {
+  max-height: 260px;
+  margin: 0;
+  padding: 10px 18px 10px 10px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 13px/1.6 var(--font-mono);
+  scrollbar-width: none;
+}
+.ai-context-files small {
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.ai-context-file-dialog .confirm-action-dialog-description {
+  min-width: 0;
+}
+.ai-task-summary {
+  margin: 4px 14px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--surface-inset);
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+.ai-task-summary > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ai-task-summary button {
+  padding: 5px 8px;
+  border: 1px solid var(--border-default);
+  border-radius: 7px;
+  background: var(--surface-panel);
+  color: var(--text-primary);
+  font: inherit;
+}
+.ai-task-summary details {
+  margin-top: 5px;
+}
+.ai-task-plan-viewport {
+  position: relative;
+  overflow: hidden;
+}
+.ai-task-plan ol {
+  max-height: 150px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0 12px 0 0;
+}
+.ai-task-plan li {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 7px;
+  padding: 6px 0;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.ai-task-step-number {
+  border: 1px solid var(--border-default);
+  border-radius: 50%;
+  text-align: center;
+}
+.ai-task-step-status {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.ai-task-plan li[data-status='in-progress'] .ai-task-step-number {
+  color: var(--action-primary-text);
+  background: var(--action-primary-bg);
+}
+.ai-task-plan li[data-status='completed'] .ai-task-step-number {
+  color: var(--status-success);
+}
+.ai-task-summary button {
+  cursor: pointer;
+  transition: background-color 140ms ease;
+}
+.ai-task-summary button:hover {
+  background: var(--action-secondary-hover);
+}
+.ai-task-summary button:active {
+  background: var(--action-secondary-active);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ai-task-summary button {
+    transition: none;
+  }
+}
+.ai-task-summary p {
+  margin: 6px 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ai-task-summary-text {
+  position: relative;
+  overflow: hidden;
+}
+.ai-task-summary-text p {
+  max-height: 160px;
+  overflow: auto;
+  scrollbar-width: none;
+  padding-right: 12px;
+}
+.ai-context-files :is(input, button):focus-visible,
+.ai-task-summary :is(button, summary):focus-visible,
+.ai-edit-message:focus-visible,
+.ai-context-file-button:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+.ai-context-files button:disabled,
+.ai-context-file-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.ai-history-filter {
+  margin-bottom: 8px;
+}
+.ai-history-snippet {
+  white-space: normal;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.ai-edit-message {
+  width: 100%;
+  min-height: 130px;
+  resize: vertical;
+  padding: 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--surface-input);
+  color: var(--text-primary);
+  font: inherit;
+}
+.ai-copilot-panel .ai-copilot-conversation-list-page {
+  display: flex;
+  flex-direction: column;
+}
+.ai-copilot-panel .ai-copilot-conversation-list {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.ai-copilot-panel .ai-copilot-conversation-list-item-copy .ai-history-snippet {
+  white-space: normal;
+}
+.ai-copilot-panel .ai-copilot-message-actions :is(.ai-copilot-message-edit-button, .ai-copilot-message-branch-button) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-muted);
+}
+.ai-copilot-panel
+  .ai-copilot-message-actions
+  :is(.ai-copilot-message-edit-button, .ai-copilot-message-branch-button):hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+.ai-context-file-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  min-height: 30px;
+  padding: 5px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+}
+.ai-context-file-button:hover:not(:disabled) {
+  background: var(--surface-hover);
+}

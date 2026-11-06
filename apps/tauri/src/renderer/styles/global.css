@@ -1,0 +1,98 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-main);
+  color: var(--text-main);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  color-scheme: inherit;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+html[data-platform='darwin'].tauri-standalone-window,
+html[data-platform='darwin'].tauri-standalone-window body,
+html[data-platform='darwin'].tauri-standalone-window #root,
+html[data-platform='linux'].tauri-standalone-window,
+html[data-platform='linux'].tauri-standalone-window body,
+html[data-platform='linux'].tauri-standalone-window #root {
+  background: transparent !important;
+}
+
+html[data-platform='darwin'].tauri-standalone-window #root,
+html[data-platform='linux'].tauri-standalone-window #root {
+  overflow: hidden;
+  border-radius: var(--window-corner-radius);
+}
+
+/* Window radius is selected by the native desktop/session policy through
+ * foundations.css. Transparent roots allow rounded-capable sessions to expose
+ * the native surface; square sessions paint the entire renderer frame. */
+html[data-platform='linux'],
+html[data-platform='linux'] body,
+html[data-platform='linux'] #root {
+  /* Theme skins also color these three roots. They sit behind the clipped
+   * fs-shell, so any opaque color becomes visible as square corner wedges. */
+  background: transparent !important;
+}
+
+html[data-platform='linux'] #root {
+  overflow: hidden;
+  border-radius: var(--window-corner-radius);
+}
+
+html[data-platform='linux'][data-window-maximized='true'] #root {
+  border-radius: 0;
+}
+
+input,
+textarea,
+[contenteditable='true'],
+.monaco-editor,
+.selectable-text {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+body.is-resizing-sidebar,
+body.is-resizing-sidebar * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+button,
+input,
+select,
+table {
+  font: inherit;
+}
+
+button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-ui);
+  line-height: var(--button-line-height);
+  letter-spacing: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}

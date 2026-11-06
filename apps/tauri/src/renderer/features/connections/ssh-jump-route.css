@@ -1,0 +1,132 @@
+.ssh-jump-route {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.ssh-jump-route li {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ssh-jump-route li + li::before {
+  content: '→';
+  margin-right: 6px;
+  color: var(--text-muted);
+}
+
+.ssh-jump-hops {
+  --ssh-jump-control-offset: 102px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ssh-jump-hops__feedback {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  margin-left: var(--ssh-jump-control-offset);
+}
+
+.ssh-jump-hops__feedback .network-field-hint {
+  padding-left: 0;
+}
+
+.ssh-jump-hop {
+  display: grid;
+  grid-template-columns: 94px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.ssh-jump-hop__label {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.ssh-jump-hop__select {
+  min-width: 0;
+}
+
+.ssh-jump-hop__actions {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.ssh-jump-hop__action {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--action-secondary-bg);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.ssh-jump-hop__action:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.ssh-jump-hop__action:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.ssh-jump-hop__action--remove:hover:not(:disabled) {
+  color: var(--status-error);
+}
+
+.ssh-jump-hop__add {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 28px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 9px;
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--radius-sm, 4px);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  margin-left: var(--ssh-jump-control-offset);
+}
+
+.ssh-jump-hop__add:hover {
+  border-color: var(--border-focus);
+  color: var(--text-primary);
+}
+
+@media (max-width: 640px) {
+  .ssh-jump-hop {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .ssh-jump-hops__feedback {
+    margin-left: 0;
+  }
+
+  .ssh-jump-hop__add {
+    margin-left: 0;
+  }
+
+  .ssh-jump-hop__label {
+    grid-column: 1 / -1;
+  }
+}

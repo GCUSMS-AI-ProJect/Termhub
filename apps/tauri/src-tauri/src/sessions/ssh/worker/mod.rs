@@ -1,0 +1,26 @@
+// SSH worker implementation fragments.
+//
+// The fragments are included into the existing `sessions::ssh::session`
+// module so the split preserves the worker's private state and call graph.
+
+include!("context.rs");
+include!("startup_lifecycle.rs");
+include!("utf8.rs");
+include!("cwd_refresh.rs");
+include!("prompt_refresh.rs");
+include!("loop.rs");
+include!("event_loop.rs");
+include!("terminal_output.rs");
+include!("tunnel_startup.rs");
+include!("command_event.rs");
+include!("metrics_diagnostics.rs");
+include!("metrics/mod.rs");
+include!("session_snapshot.rs");
+include!("sftp_startup.rs");
+include!("remote_exec.rs");
+include!("rea_channel.rs");
+include!("without_sftp.rs");
+include!("dispatch_terminal.rs");
+include!("dispatch_transfer.rs");
+include!("dispatch_files.rs");
+include!("dispatch.rs");

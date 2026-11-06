@@ -1,0 +1,64 @@
+.file-change-diff-wrap {
+  position: relative;
+  min-width: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.file-change-diff {
+  max-height: 300px;
+  overflow: auto;
+  padding: 8px 14px 8px 8px;
+  background: var(--surface-panel);
+  scrollbar-width: none;
+}
+.file-change-diff::-webkit-scrollbar {
+  display: none;
+}
+.file-change-diff pre {
+  margin: 0;
+  padding: 2px 6px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  line-height: 1.55;
+}
+.file-change-diff pre span {
+  opacity: 0.75;
+  user-select: none;
+}
+.file-change-diff small {
+  display: block;
+  padding: 6px;
+  color: var(--text-muted);
+}
+.file-change-removed {
+  background: color-mix(in srgb, var(--status-danger) 10%, transparent);
+  color: var(--text-primary);
+}
+.file-change-added {
+  background: color-mix(in srgb, var(--status-success) 10%, transparent);
+  color: var(--text-primary);
+}
+.file-change-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+}
+.file-change-conflict {
+  margin: 10px;
+  padding: 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--surface-panel);
+}
+.file-change-conflict p {
+  margin: 0 0 8px;
+  color: var(--text-primary);
+}
+.file-change-error {
+  color: var(--status-danger);
+  overflow-wrap: anywhere;
+}

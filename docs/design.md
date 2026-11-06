@@ -1,0 +1,304 @@
+# transterm Design Guide
+
+本文档记录当前 transterm 工作台页面的设计语言。它不是营销页规范，而是桌面远程工作台的产品界面规范，用来指导后续终端、系统信息、文件管理、命令输入和多标签工作区的 UI 改动。
+
+## 基础颜色设置
+
+Solarized 和 Gruvbox 浅色使用暖米色的侧栏、列表、输入框及浮层层次；主题预设的计算颜色读取为可保存的十六进制值，避免混合色回退成纯白。所有主题的标题栏左侧品牌区与主侧栏共用同一背景语义值。
+
+- 独立提供侧栏与工具栏背景、输入框与按钮背景、自绘菜单背景；主题值通过 core/Rust 配置保存，经过参考变量和语义变量进入组件。
+- transterm 深色默认分别为 #242424、#1A1A1A、#1E2024。浮层与悬停灰阶统一为 #303030；旧 #2A2A2A / #2E2E2E 表面颜色与 UI 覆盖值在读取时迁移。
+- 旧自定义主题缺少新字段时保留派生行为；各主题的深浅色颜色独立保存。
+
+## 1. Design Direction
+
+transterm 的视觉目标是：像原生桌面工具一样安静、清晰、密集、可靠。页面应优先服务长期使用和快速扫读，而不是展示感。
+
+核心关键词：
+
+- 桌面感：窗口、标签、侧栏、表格和状态栏都应贴近 macOS / Windows 桌面工具的秩序。
+- 操作密集：终端、系统指标、文件列表、传输状态要能同时存在，不用大面积留白撑场面。
+- 浅色主调：浅色模式以白色和浅灰为主体，边界靠 1px border、弱阴影和表头底色区分。
+- 终端优先：主视区永远先保证终端可读性，其他面板为辅助信息。
+- 状态克制：蓝、绿、黄、红只用于交互或状态含义，不做大面积装饰。
+
+## 2. Layout
+
+工作台采用三层桌面结构：
+
+1. 顶部标签栏：常规高度约 48px，开启紧凑模式后为 36px，承载会话 tab、新建 tab、窗口级设置入口。
+2. 左侧系统侧栏：宽度约 214-256px，展示连接信息、系统指标、进程、网络、磁盘。
+3. 主工作区：上方为终端，下方为文件管理面板，中间通过可拖拽分隔条调整。
+
+标签页布局在「设置 → 界面与概览 → 标签页布局」中切换，默认单行标签页：
+
+- 单行标签页：所有标签排成一行，系统侧栏在左侧，即上面的三层结构。
+- 二级标签页：会话工作区左侧为主机列表，标签栏只显示所选主机的标签，系统侧栏移到终端右侧并与终端直接相接，中间不再保留留边框。主机列表初始宽度与主页侧栏一致，共用实时宽度；拖动分隔条调宽时吸附默认 214px，双击分隔条或按 Home 恢复默认值。标题行的侧栏按钮收起为 44px 图标栏，展开时保留原宽度；右侧监控栏独立调宽。
+
+布局规则：
+
+- 页面必须占满窗口，避免主体内容出现页面级滚动。
+- 终端区域是主焦点，文件面板默认在底部，不能抢占终端视觉重心。
+- 侧栏信息按「身份信息 -> 系统信息 -> 进程 -> 网络 -> 磁盘」排序。
+- 底部状态栏高度保持低存在感，只显示任务运行状态、链接和系统状态。
+- 多标签栏使用直角或小圆角的桌面 tab，不使用网页式胶囊导航。
+
+## 3. Color System
+
+颜色必须走主题变量，不允许在组件里散落硬编码色值。当前主题链路是：
+
+```txt
+tokens -> theme vars -> component skins -> terminal colors
+```
+
+浅色主题基准：
+
+| Role             | Token                | Value / Usage                       |
+| ---------------- | -------------------- | ----------------------------------- |
+| App background   | `--bg-main`          | `#f4f5f7`，窗口和工作区底色         |
+| Sidebar / chrome | `--bg-sidebar`       | `#ffffff`，左侧栏和顶部栏           |
+| Card / panel     | `--bg-card`          | `#ffffff`，终端外围、表格面板、弹层 |
+| Hover            | `--bg-hover`         | `#eceff3`，导航 hover、轻按钮 hover |
+| Active           | `--bg-active`        | `#dde2e8`，更强的选中背景           |
+| Main text        | `--text-main`        | `#1f2933`，正文和关键标签           |
+| Muted text       | `--text-muted`       | `#66717f`，辅助信息                 |
+| Soft text        | `--text-soft`        | `#7b8794`，弱辅助信息               |
+| Border           | `--border-light`     | 低对比 1px 分割线                   |
+| Primary          | `--primary`          | 只用于主要动作和通用链接            |
+| Focus outline    | `--focus-outline`    | 焦点、选中态和拖拽目标的描边/光环   |
+| Accent highlight | `--accent-highlight` | 非按钮的图标、辅助文字和状态强调    |
+
+状态色规则：
+
+- Success / online / SSH：使用 `--success` 或 `--type-ssh`，面积要小。
+- Warning / memory pressure：使用 `--warning` 或 `--memory-warn`，只作为点、条、数字提示。
+- Danger / destructive：使用 `--danger`、`--danger-text`、`--danger-surface`，只用于删除、关闭、错误。
+- Info / action blue：使用 `--primary`、`--copy-link`、`--folder-accent`，不能随手写新的蓝色。
+- `--focus-outline` 只用于焦点、选中态和拖拽目标的描边或光环；不要把它当作实心按钮背景。
+- 文件图标和发送等文件相关操作使用 `--folder-accent`；实心主按钮使用 `--action-primary-*`。
+- 主按钮和危险按钮的文字通过 action 语义 token 根据背景选择白色或深色，透明背景先合成 panel surface；不要固定白字。原生控件的兜底继承规则必须保持低优先级，不能覆盖公用组件自身的文字颜色。
+- `--accent-highlight` 用于非按钮的图标、辅助文字和状态强调，不替代焦点描边。
+- 侧栏当前项在暗色模式使用白色强调，浅色模式使用主文本色，避免蓝色过度出现。
+
+新组件使用 `styles/tokens/semantic.css` 的规范语义变量；上文 `--primary`、`--success`、`--warning`、`--danger` 等为旧皮肤兼容名，迁移时按用途选择 `--action-*` / `--status-*`，不新增旧别名引用。公共视觉组件与 CSS 共址于 `components/common/<name>/`，`features/common/` 保留辅助组件与兼容导出。
+
+## 4. Typography
+
+字体体系：
+
+- UI 字体：`SF Pro Text`, `PingFang SC`, `Microsoft YaHei`, `Segoe UI`, sans-serif。
+- 数字和终端周边：`SF Mono`, `JetBrains Mono`, `Menlo`, `Consolas`, monospace。
+- 终端内容由 xterm 主题控制，必须保证等宽、行高稳定、选择态可见。
+- 组件必须使用 `--font-ui` 或 `--font-mono`，让用户导入或选择的字体覆盖首页、文件区、系统信息、命令和会话控件；固定字体只保留给品牌字标和图标字形。
+- 界面缩放由 WebView 的界面缩放偏好统一控制，文件区、系统信息栏、设置和弹窗一起缩放；终端内容字号由终端自己的缩放偏好独立控制。
+
+字号建议：
+
+- 标签栏、按钮、表头：12–14px；辅助提示至少 12px。
+- 侧栏导航和文件列表：13–14px。
+- AI 聊天正文与输入：15px，行高 1.6–1.7；窄侧栏工具栏换行，避免压缩字号。
+- 页面标题和品牌：15-21px。
+- 终端和命令输入：以可读性优先，行高保持稳定，不随窗口宽度缩放。
+
+按钮文字规范：
+
+| 按钮高度 | 字号 | 字重 | 适用范围                               |
+| -------- | ---- | ---- | -------------------------------------- |
+| 24–28px  | 12px | 600  | 紧凑工具栏、行内确认/取消、发送        |
+| 32–38px  | 13px | 600  | 面板操作、表单内确认/取消、次级动作    |
+| 40–44px  | 14px | 600  | 弹窗页脚、主要确认、新建连接等显著操作 |
+
+- 确认和取消按钮一律使用 UI 字体栈、`line-height: 1` 与 `letter-spacing: 0`；不得为同尺寸按钮单独设为 400/500 字重或使用非 UI 字体。
+- 蓝色主操作使用 `--action-primary-*` 主题变量；取消和次级操作使用 `flat-button` 或对应的中性色 token，不能自行写新的蓝色。
+
+排版规则：
+
+- 表格和指标文字要能单行扫读，长文本省略，不挤压相邻列。
+- 数字、路径、权限、owner/group 等使用等宽或接近等宽的显示节奏。
+- 不使用负字距，不用 viewport width 驱动字号。
+
+## 5. Surfaces And Borders
+
+transterm 的层级主要靠边界，不靠重装饰。
+
+- 外层区域：浅灰背景 + 1px 边线。
+- 面板：白色背景 + 1px border，必要时使用非常弱的阴影。
+- 表格：表头使用 `--surface-table-head`，行分割使用 `--border-light`。
+- 浮层：使用 `--popover-bg`、`--popover-shadow`、`--modal-backdrop-bg`。
+- 命令 Dock：使用玻璃感半透明表面，但只作为工具条，不做大面积毛玻璃背景。
+- 浅色独立窗口必须有实色底板，外层透明只用于原生圆角裁切；禁止用半透明 hover 色作为窗口渐变端点。
+- 浅色连接表单按面板、分组、输入框建立层次：内容区使用 `--surface-panel`，导航与分组使用 `--surface-section`，输入框使用 `--surface-input`，边界使用语义 border。
+- iTerm2 浅色预设保留主题色温，以带色画布、较亮面板和更亮输入框区分层级；应用表面调整不改变终端 ANSI 配色。
+- 标题栏与标签条使用 `--surface-titlebar`，不得绑定输入框/浮层的 `--surface-elevated`；iTerm2 浅色预设标题栏沿用各自画布色，避免控件提亮后顶部出现突兀白带。
+
+圆角规则：
+
+- Linux 窗口外框不按发行版或 `.deb` / AppImage 包格式决定。Rust 通过 `XDG_CURRENT_DESKTOP`（空值时回退 `XDG_SESSION_DESKTOP`）与 `XDG_SESSION_TYPE` 给出保守策略，经 Tauri bridge 在 React 挂载前传入 renderer；主窗口和独立窗口共用 `--window-corner-radius`。
+- 仅明确的 GNOME Wayland 会话沿用 `15px` 外框圆角（桌面标识只接受 GNOME 及 Ubuntu/Pop 前缀）；LXQt、KDE、Xfce、X11/远程桌面和未知环境使用直角。最大化窗口始终直角。此策略不是对系统主题实际圆角或合成器能力的探测，环境变量缺失或 IPC 失败时回退直角；内部按钮、卡片圆角不受影响。
+- 工具按钮：4-6px。
+- 输入框、选择器、小弹层：6-8px。
+- Overview、最近连接和统计入口可以使用 8-12px 圆角卡片，用来提供欢迎页的停靠感和点击热区。
+- 终端、文件表格、系统监控和状态栏这类生产工作区应优先使用直线、分隔线和表格边界。
+- 圆角卡片不能层层嵌套；一个信息块只需要一层边界。
+
+## 6. Core Components
+
+### Form Controls
+
+- 同一个表单网格中的 input、原生 select 和 `DropdownSelect` 必须使用相同的外框高度、圆角、边框与左右内边距；不能让平台分支造成下拉框比相邻输入框矮，或文字贴边。
+- 常规桌面表单控件以“新建连接”作为基线：`38px` 高、`12px` 左右内边距、`6-8px` 圆角和 `1px` 主题边框。紧凑工具栏控件可以更小，但不得与同一表单行混用。
+- macOS 原生 select 与 Windows/Linux 自绘 `DropdownSelect` 必须为同一语义控件提供等高的外框和等效文字/箭头留白；平台差异只保留菜单呈现方式。
+- 新增表单区块前，先复用现有控件基线；若确需变体，应在组件容器上声明局部 CSS 变量，避免在单个 input 或 select 上散落尺寸。
+
+### Top Tabs
+
+- tab 高度由 `.fs-shell` 上的 `--window-tabbar-height` 统一控制：默认 48px，`.is-compact-tabbar` 时 36px。「设置 → 界面与概览 → 标签页布局 → 紧凑标签栏」切换，默认关闭。
+- 当前 tab 背景略深，非当前 tab 保持低对比。
+- tab 标题可显示序号、会话名、关闭按钮。
+- 新建按钮是窄按钮，不做大 CTA。
+
+#### macOS 原生标题栏基线
+
+macOS 主窗口使用 AppKit 原生红黄绿按钮，以下参数是 Beta 9 已确认的迁移基线，单位均为逻辑点（Retina 2x 下物理像素翻倍）：
+
+| 参数                    |         基线值 | 原生校准后的含义                                                                   |
+| ----------------------- | -------------: | ---------------------------------------------------------------------------------- |
+| renderer 顶部标签栏高度 |      36 / 48pt | 紧凑 / 常规标签栏在 100% 界面缩放下的基线；实际高度为 `基线 × uiZoomPercent / 100` |
+| 按钮 frame              |    AppKit 原生 | 保留系统 frame/bounds，仅移动 origin                                               |
+| 可见圆点直径            |    AppKit 原生 | 保留系统圆形绘制，不强制方形 frame 或缩放 layer                                    |
+| 左侧起点参考            |           20pt | 按 14pt 基准定位中心，实际 frame 由 AppKit 决定                                    |
+| 中心间距                |           23pt | 关闭/最小化/缩放按钮的中心间距                                                     |
+| 三个按钮中心的 `x`      | 27 / 50 / 73pt | 横向位置及原生按钮尺寸不随 WebView 界面缩放                                        |
+| `transterm` 字标        |           16px | Tauri/macOS 专用基线不额外下移（相对 renderer 基线 0px）                           |
+
+这些值是设计规格，不是 Debug/Release 补偿值。主窗口在 macOS 上隐藏创建，Rust 在首次显示前读取 `NSWindow` 真实 frame 与保存的界面缩放，并经 `NSView` 坐标转换写入 AppKit 原生按钮；renderer 应用 UI 偏好并提交首屏后才通过 Tauri bridge 显示窗口，避免透明材质先于主页露出。原生标题栏容器与按钮垂直中心跟随缩放后的 renderer 顶栏；改变界面缩放或紧凑标签栏时主动校准；原生窗口与标题栏布局通知同步维护几何，全屏恢复不再依赖延迟定时器。窗口捕获时系统共享指示器也须与顶栏垂直居中，使用系统原生布局，不绘制替代控件。`tauri*.conf.json` 不得再保存 traffic-light 坐标，Rust 也不得根据 `debug_assertions` 添加垂直偏移。renderer 仅负责 36px（紧凑）或 48px 基准顶栏和字标，不绘制或伪造红黄绿按钮。
+
+### Overview
+
+- Overview 是入口页，可以比终端工作区更柔和，允许使用圆角面板和统计卡片。
+- Hero 可以保留大圆角边界，但内部内容应直接、简洁，不再套第二层卡片。
+- 统计卡片和最近连接卡片可以有圆角、弱边框和轻阴影，用于表达可点击区域。
+- 卡片 hover 只做轻微抬升或边框增强，不要变成强烈的营销式动效。
+- 如果页面进入真实工作流，例如终端、文件、监控、传输，就回到线性/表格化布局。
+
+### System Sidebar
+
+- 侧栏为信息仪表盘，不是菜单装饰区。
+- IP、Access、Uptime、Load、CPU、Memory、Swap 等信息右对齐或分栏对齐。
+- 进度条高度要低，颜色只表达状态。
+- 表格区域保持紧凑，表头固定视觉节奏。
+- 折叠按钮应低调，hover 时才增强。
+
+### Terminal Area
+
+- 终端占主面积，背景为 `--terminal-bg`。
+- xterm selection 使用 `--terminal-selection-bg`。
+- DOM 选区背景由 xterm 的独立 selection layer 绘制；选中文字 span 不重复绘制同色背景，以免遮住特殊符号的字形外延。块字符画布与选中文字同处选区上层，保留选区前景色和逐单元格几何形状。
+- 内置亮色终端的 ANSI white/brightWhite 使用可读的深色文字槽位。TUI 在默认背景上显式输出的 RGB 纯白前景由 xterm 缓冲区适配为主题默认文字色；保留粗体等样式、显式背景配色与反色文本，不改写协议输出或会话日志。不根据自然语言内容猜测“提问标题”等类别。
+- xterm 开启 `minimumContrastRatio: 4.5`，按每个 cell 的实际背景保护 ANSI、256 色、RGB、反色、选区和搜索文字的可读性。仅改变显示颜色，保留原始属性、dim/hidden 样式；图形背景用的块字符按 xterm 规则保留原色。主题选区/搜索 token 也必须成对校验，避免相同或过近的前景与背景。
+- 终端右键菜单提供“粘贴选定的文本”：使用打开菜单时当前 pane 的 xterm 本地划选文本快照，无选区时禁用；不读取或写入系统剪贴板，不使用 Vim/TUI Visual 选区。经 xterm 粘贴链路插入文本，保留 bracketed paste 与换行处理，不额外发送回车。
+- 终端搜索浮层出现在右上角，不能遮挡大量内容。
+- 终端内部不使用卡片边框，边界由外层 frame shadow 和区域分隔承担。
+- 本地终端 frame 的左右留边均在靠近终端的一侧绘制主题分隔线；浅色主题不能依赖留边与终端的底色差异来表达边界。左右留边保持 15px，不改变 xterm 的可用尺寸。
+
+### Command Dock
+
+- 命令输入条浮在终端底部，左右留出 48px。
+- 输入框文本提示可说明快捷键，但保持一行。
+- 历史、选项、查找、复制粘贴、发送目标使用图标或短文本。
+- 弹出面板向上展开，宽度受限，不压坏终端。
+
+### File Panel
+
+- 底部文件面板默认高度约 300px。
+- 本地和远程文件列表左右分栏，列头固定浅灰背景。
+- transterm 保留列表斑马纹；Codex 和打包主题预设的文件、进程、磁盘与系统表格统一使用主题面板底色，悬停和选中仍显示反馈。
+- 非 transterm 主题的远程路径栏、筛选栏和左右表头使用较深的主题层级：暗色为画布底色，浅色为悬停表面色。
+- 文件工具栏可以切换左侧显示：默认本地文件列表，或远程目录树；选择通过 UI state 保存。远程目录树支持按需展开、键盘导航和定位当前目录，点击节点联动右侧文件列表。
+- 目录树模式的远程路径栏与筛选栏横跨两栏，树标题与右侧表头对齐；树节点和文件列表均使用 24px 行高与相同等宽字体，保留独立滚动。
+- 路径、大小、类型、修改时间、权限、owner/group 均按表格列处理。
+- 文件夹图标使用蓝色，但只作为文件类型识别，不扩大为主题色块。
+- 拖拽上传提示放在远程面板标题区域，不能遮挡列表。
+
+### Status Bar
+
+- 状态栏高度约 24px。
+- 文案低对比，右侧任务状态明确。
+- 只放运行状态、Changelog、API Reference、Status 这类低频入口。
+
+## 7. Interaction
+
+交互应轻、快、可预测：
+
+- hover：背景轻微变深，文字增强，不做夸张位移动画。
+- active：当前项有明确边界或背景；不要仅依赖颜色。
+- focus：使用可见焦点环，键盘操作必须能定位当前元素。
+- resize：侧栏和文件面板拖拽时只改变尺寸，不重排主结构。
+- 侧栏展开时，首页与会话页的顶部品牌列和侧栏共用实时宽度；界面缩放与窄窗口样式不得单独改变顶部品牌列宽度。
+- context menu：顶部标签、文件页、终端右键菜单使用统一菜单组件。
+- destructive action：必须有确认或清晰危险态，不只靠红色文字。
+
+动画原则：
+
+- 常规 transition 控制在 150-220ms。
+- 不对表格行、终端内容、文件列表做重动画。
+- 尊重 `prefers-reduced-motion`，后续动画应可降级。
+
+## 8. Iconography
+
+- 图标用于识别工具，不用于装饰。
+- Material Symbols 和现有 `AppIcon` 都要保持线性、轻量、同尺寸。
+- 顶部工具、文件操作、命令 Dock 应优先使用图标按钮，并通过 title/tooltip 表达含义。
+- 只有主要动作可以使用文字按钮，例如「File」「Command」「user」这类模式切换。
+
+## 9. Do And Don't
+
+Do:
+
+- 使用现有 theme token。
+- 保持终端、文件表格、系统指标同屏可读。
+- 保持 1px 边界、浅灰表头、紧凑行高。
+- 在 Overview 这类入口页保留克制的圆角卡片，让主要操作更容易被识别。
+- 新增状态色时先补 theme token，再接组件样式。
+- 在浅色和暗色主题下同时检查。
+
+Don't:
+
+- 不做营销页 hero、装饰性渐变、光斑、漂浮大卡片。
+- 不用新的硬编码蓝色、红色、绿色。
+- 不把圆角卡片继续套圆角卡片，也不要把生产工作区改成卡片墙。
+- 不让文件表格或终端工具条因为动态文案撑开布局。
+- 不用只有颜色差异的状态表达，重要状态必须有文本或图标辅助。
+
+## 10. Implementation Map
+
+主要样式入口：
+
+- `apps/tauri/src/renderer/styles/themes/tokens.css`
+- `apps/tauri/src/renderer/styles/themes/transterm-light.css`
+- `apps/tauri/src/renderer/styles/themes/transterm-dark.css`
+- `apps/tauri/src/renderer/styles/features/component-skins.css`
+- `apps/tauri/src/renderer/styles/features/shell.css`
+- `apps/tauri/src/renderer/styles/features/session.css`
+- `apps/tauri/src/renderer/styles/features/workstation-skin.css`
+
+`transterm-dark.css` 和 `transterm-light.css`（兼容 `default-dark.css`/`default-light.css` 历史别名）只保存主题 token；两套主题原先的组件选择器规则统一位于 `component-skins.css`。该文件在主题 token 之后、全局和业务 feature 样式之前加载，保留暗/亮规则原有的作用域与级联顺序。新增规则应优先写入对应 feature CSS，并使用语义变量；不要再把组件选择器放回主题 token 文件。
+
+新增 UI 时按以下顺序落地：
+
+1. 先确认是否已有 token 可复用。
+2. 没有 token 时补到明暗主题变量。
+3. 组件 CSS 只引用变量，不直接写主题色。
+4. 终端和 Monaco 这类第三方视图从 CSS 变量读取颜色。
+5. 最后做亮/暗主题和真实窗口尺寸检查。
+
+## 11. Review Checklist
+
+- 页面是否仍然像桌面工具，而不是网页落地页？
+- 终端是否仍是第一视觉焦点？
+- 侧栏、终端、文件面板是否能同屏扫读？
+- 颜色是否全部来自 theme token？
+- hover、active、focus 是否都有明确状态？
+- 文本是否不会撑爆按钮、tab、表格列或命令输入条？
+- 浅色/暗色主题是否都能保持对比度？
+- 新增交互是否遵守 `Rust commands/events -> bridge -> renderer` 的能力边界？

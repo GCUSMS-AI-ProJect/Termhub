@@ -1,0 +1,146 @@
+import { useEffect, useRef, useState } from 'react'
+import type {
+  TranstermDesktopApi,
+  TransferTask,
+  SshProfile,
+  WorkspaceSessionSource,
+  WorkspaceSnapshot,
+  WorkspaceTab
+} from '@transterm/core'
+import { isActiveTransfer, tabStatusClass } from '../../app/app-utils'
+import { TransferBar } from './transfer-bar'
+import { TransferPopover } from './transfer-popover'
+import { scopeTransfersToSession, type TransferSessionTab } from './transfer-scope'
+import { t } from '../../i18n'
+
+export function TransferCenter({
+  activeProfileId,
+  activeTabId,
+  activeTabStatus,
+  activeJumpHosts,
+  activeRouteTarget,
+  activeTabSource,
+  desktopApi,
+  fullWidth,
+  isPending,
+  onHideToBackground,
+  onApplySnapshot,
+  onError,
+  sessionTabs,
+  transfers,
+  visible
+}: {
+  activeProfileId?: string
+  activeTabId?: string | null
+  activeTabStatus?: WorkspaceTab['status'] | null
+  activeJumpHosts?: SshProfile[]
+  activeRouteTarget?: SshProfile
+  activeTabSource?: WorkspaceSessionSource | null
+  desktopApi?: TranstermDesktopApi
+  fullWidth: boolean
+  isPending: boolean
+  onHideToBackground?(tabId: string): void | Promise<void>
+  onApplySnapshot(snapshot: WorkspaceSnapshot): void
+  onError(scope: string, error: unknown): void
+  sessionTabs: TransferSessionTab[]
+  transfers: TransferTask[]
+  visible: boolean
+}) {
+  const [showTransfers, setShowTransfers] = useState(false)
+  const previousActiveCountRef = useRef(0)
+  const scopedTransfers = scopeTransfersToSession(transfers, activeTabId, activeProfileId, sessionTabs)
+  const activeCount = scopedTransfers.reduce((count, transfer) => count + (isActiveTransfer(transfer) ? 1 : 0), 0)
+
+  useEffect(() => {
+    if (activeCount > previousActiveCountRef.current) {
+      setShowTransfers(true)
+    }
+    previousActiveCountRef.current = activeCount
+  }, [activeCount])
+
+  useEffect(() => {
+    setShowTransfers(false)
+  }, [activeProfileId, activeTabId])
+
+  useEffect(() => {
+    if (!visible) {
+      setShowTransfers(false)
+    }
+  }, [visible])
+
+  const runTransferAction = async (
+    scope: string,
+    action: (transferId: string) => Promise<WorkspaceSnapshot>,
+    transferId: string
+  ) => {
+    if (!desktopApi) {
+      return
+    }
+    try {
+      const snapshot = await action(transferId)
+      onApplySnapshot(snapshot)
+    } catch (error) {
+      onError(scope, error)
+      throw error
+    }
+  }
+
+  const clearTransfers = async (transferIds: string[]) => {
+    if (!desktopApi || !transferIds.length) {
+      return
+    }
+    try {
+      const snapshot = await desktopApi.clearTransfers(transferIds)
+      onApplySnapshot(snapshot)
+    } catch (error) {
+      onError(t.clearTransferHistory, error)
+    }
+  }
+
+  return (
+    <>
+      {visible ? (
+        <TransferBar
+          activeCount={activeCount}
+          activeTabId={activeTabId}
+          activeTabStatus={activeTabStatus ? tabStatusClass(activeTabStatus) : null}
+          activeJumpHosts={activeJumpHosts}
+          activeRouteTarget={activeRouteTarget}
+          activeTabSource={activeTabSource}
+          fullWidth={fullWidth}
+          isPending={isPending}
+          onHideToBackground={onHideToBackground}
+          onOpen={() => setShowTransfers((current) => !current)}
+        />
+      ) : null}
+
+      {showTransfers ? (
+        <TransferPopover
+          transfers={scopedTransfers}
+          onDiscardTransfer={(transferId) =>
+            desktopApi
+              ? runTransferAction(t.discardTransferCheckpoint, (id) => desktopApi.discardTransfer(id), transferId)
+              : undefined
+          }
+          onForceDiscardTransfer={(transferId) =>
+            desktopApi
+              ? runTransferAction(t.forceDiscardCheckpoint, (id) => desktopApi.discardTransfer(id, true), transferId)
+              : undefined
+          }
+          onPauseTransfer={(transferId) =>
+            desktopApi
+              ? runTransferAction(t.pauseTransfer, (id) => desktopApi.pauseTransfer(id), transferId)
+              : undefined
+          }
+          onResumeTransfer={(transferId) =>
+            desktopApi
+              ? runTransferAction(t.resumeTransfer, (id) => desktopApi.resumeTransfer(id), transferId)
+              : undefined
+          }
+          onClearTransfers={clearTransfers}
+          onClose={() => setShowTransfers(false)}
+        />
+      ) : null}
+    </>
+  )
+}

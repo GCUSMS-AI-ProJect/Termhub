@@ -1,0 +1,18 @@
+.ai-ssh-control.ft-btn {
+  position: relative;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  padding: 0;
+  border-radius: 7px;
+}
+
+.ai-ssh-connected-mark {
+  position: absolute;
+  right: 1px;
+  bottom: 1px;
+  border-radius: 50%;
+  background: var(--action-primary-bg);
+  color: var(--action-primary-text);
+}

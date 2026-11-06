@@ -1,0 +1,19 @@
+/*
+ * Component skins for the built-in themes (modularized).
+ *
+ * The default theme files intentionally contain tokens only. These rules keep
+ * the existing built-in UI intact while living in the component-skin layer.
+ * They are scoped to the built-in theme roots and consume semantic variables;
+ * new component styling belongs next to its component instead.
+ *
+ * Keep the dark section before the light section: this preserves the original
+ * cascade order from the theme files.
+ */
+
+@import './component-skins/shell-skin.css';
+@import './component-skins/home-skin.css';
+@import './component-skins/session-skin.css';
+@import './component-skins/modals-skin.css';
+@import './component-skins/workstation-dark-skin.css';
+@import './component-skins/forms-skin.css';
+@import './component-skins/light-skin.css';

@@ -1,0 +1,150 @@
+name: Linux package test
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - 'beta/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: linux-package-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package-deb:
+    name: Package Debian installer
+    # 22.04 keeps the generated binary compatible with Debian 12 and common
+    # Ubuntu LTS installations while providing Tauri's WebKitGTK 4.1 runtime.
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-gnu
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install Linux Tauri dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf libfuse2 file
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build shared packages and typecheck Tauri
+        run: |
+          npm run build:packages
+          npm run typecheck -w @transterm/tauri
+
+      - name: Package Linux deb
+        run: npm run release:linux -w @transterm/tauri
+
+      - name: Build and smoke-test the universal Debian 11 installer
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle_root="apps/tauri/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle"
+          deb_file="$(find "$bundle_root/deb" -maxdepth 1 -type f -name '*.deb' -print -quit)"
+          test -n "$deb_file"
+          version="$(dpkg-deb -f "$deb_file" Version)"
+          output_dir="$bundle_root/deb/universal-output"
+          mkdir -p "$output_dir"
+          docker run --rm --platform linux/amd64 \
+            --volume "$GITHUB_WORKSPACE:/workspace" \
+            --workdir /workspace \
+            ubuntu:22.04 bash -euc '
+              export DEBIAN_FRONTEND=noninteractive
+              apt-get update
+              apt-get install -y --no-install-recommends \
+                libwebkit2gtk-4.1-0 libgtk-3-0 libayatana-appindicator3-1 \
+                libssl3 libgl1-mesa-dri patchelf python3
+              python3 apps/tauri/scripts/build-universal-deb.py "$1" "$2"
+            ' _ "/workspace/$deb_file" "/workspace/$output_dir"
+          universal_deb="$output_dir/transterm-${version}-linux-x86_64.deb"
+          test -f "$universal_deb"
+          mv "$universal_deb" "$deb_file"
+
+          docker run --rm --platform linux/amd64 \
+            --volume "$GITHUB_WORKSPACE/$deb_file:/tmp/transterm.deb:ro" \
+            debian:bullseye-slim bash -euc '
+              export DEBIAN_FRONTEND=noninteractive
+              printf "%s\n" \
+                "deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20260903T220410Z bullseye main" \
+                "deb [check-valid-until=no] http://snapshot.debian.org/archive/debian-security/20260903T220410Z bullseye-security main" \
+                > /etc/apt/sources.list
+              rm -f /etc/apt/sources.list.d/*
+              apt-get update
+              apt-get install -y --no-install-recommends /tmp/transterm.deb
+              if ! trace="$(/bin/sh -x /usr/bin/transterm --help 2>&1)"; then
+                printf "Debian 11 transterm CLI smoke failed:\n%s\n" "$trace" >&2
+                exit 1
+              fi
+              if ! grep -Fq "+ exec /usr/lib/transterm/runtime/transterm --help" <<< "$trace"; then
+                printf "Debian 11 launcher did not select the private runtime:\n%s\n" "$trace" >&2
+                exit 1
+              fi
+              ! dpkg-query --show libwebkit2gtk-4.1-0 >/dev/null 2>&1
+              dpkg -V file-term
+            '
+
+          docker run --rm --platform linux/amd64 \
+            --volume "$GITHUB_WORKSPACE/$deb_file:/tmp/transterm.deb:ro" \
+            ubuntu:22.04 bash -euc '
+              export DEBIAN_FRONTEND=noninteractive
+              apt-get update
+              apt-get install -y --no-install-recommends \
+                libwebkit2gtk-4.1-0 libayatana-appindicator3-1 libssl3 libgl1-mesa-dri \
+                /tmp/transterm.deb
+              if ! trace="$(/bin/sh -x /usr/bin/transterm --help 2>&1)"; then
+                printf "Ubuntu transterm CLI smoke failed:\n%s\n" "$trace" >&2
+                exit 1
+              fi
+              if ! grep -Fq "+ exec /usr/lib/transterm/transterm --help" <<< "$trace"; then
+                printf "Ubuntu launcher did not select the system runtime:\n%s\n" "$trace" >&2
+                exit 1
+              fi
+              dpkg -V file-term
+            '
+
+      - name: Verify and collect Debian installer
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle_root="apps/tauri/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle"
+          deb_file="$(find "$bundle_root/deb" -maxdepth 1 -type f -name '*.deb' -print -quit)"
+          test -n "$deb_file"
+          dpkg-deb --info "$deb_file"
+          mkdir -p artifacts
+          dpkg-deb --contents "$deb_file" > artifacts/transterm-linux-x86_64.contents.txt
+          cp "$deb_file" "artifacts/transterm-$(dpkg-deb -f "$deb_file" Version)-linux-x86_64.deb"
+          extracted_dir="$(mktemp -d)"
+          trap 'rm -rf "$extracted_dir"' EXIT
+          dpkg-deb --extract "$deb_file" "$extracted_dir"
+          cp "$extracted_dir/usr/share/applications/transterm.desktop" artifacts/transterm.desktop
+          cp "$extracted_dir/usr/share/applications/com.transterm.desktop.desktop" artifacts/com.transterm.desktop.desktop
+          grep -qx 'Icon=transterm' artifacts/transterm.desktop artifacts/com.transterm.desktop.desktop
+          grep -qx 'NoDisplay=true' artifacts/com.transterm.desktop.desktop
+
+      - name: Upload Debian installer
+        uses: actions/upload-artifact@v6
+        with:
+          name: transterm-Linux-deb-${{ github.run_number }}
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 14
+        if: always()

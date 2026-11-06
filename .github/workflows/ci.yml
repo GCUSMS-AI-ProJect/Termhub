@@ -1,0 +1,533 @@
+name: Tauri CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tauri-renderer-and-shared-quality:
+    name: Tauri renderer and shared packages
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Audit production npm dependencies
+        run: npm audit --omit=dev --audit-level=low
+
+      # The workspace keeps lint/build tooling as dev dependencies.
+      # Report advisories for those tools, but do not block the application gate
+      # when npm publishes a new advisory for a package that is not shipped.
+      - name: Report development npm dependency advisories
+        continue-on-error: true
+        run: npm audit --include=dev --audit-level=low
+
+      - name: Build shared packages
+        run: npm run build:packages
+
+      - name: Test renderer operation logic
+        run: npm run test:renderer -w @transterm/tauri
+
+      - name: Exercise AI Copilot fixture smoke
+        run: npm run qa:ai-copilot-fixture-smoke
+
+      - name: Typecheck Tauri renderer and shared packages
+        run: |
+          npm run typecheck -w @transterm/core
+          npm run typecheck -w @transterm/shared
+          npm run typecheck -w @transterm/storage
+          npm run typecheck -w @transterm/tauri
+
+      - name: Lint Tauri and shared source
+        run: npx eslint apps/tauri packages/core packages/shared packages/storage --max-warnings=0
+
+      - name: Check Tauri and shared formatting
+        run: npx prettier --check apps/tauri packages/core packages/shared packages/storage package.json package-lock.json .github/workflows/ci.yml .github/workflows/release.yml
+
+  tauri-socket-lifecycle:
+    name: Tauri socket lifecycle (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-2022]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Windows native build dependencies
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          choco install nasm --version=2.16.01 --no-progress --yes
+          if ($LASTEXITCODE -ne 0) {
+            throw "Chocolatey failed to install NASM (exit code $LASTEXITCODE)"
+          }
+
+          $nasmPath = @(
+            (Join-Path $env:ProgramFiles 'NASM\nasm.exe')
+            (Join-Path ${env:ProgramFiles(x86)} 'NASM\nasm.exe')
+            (Join-Path $env:ChocolateyInstall 'bin\nasm.exe')
+          ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $nasmPath) {
+            throw 'NASM was installed but its executable could not be located'
+          }
+          Split-Path -Parent $nasmPath | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Verify NASM
+        if: runner.os == 'Windows'
+        run: nasm -v
+
+      - name: Install Linux Tauri link dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+
+      - name: Check the full Tauri Rust application
+        working-directory: apps/tauri/src-tauri
+        run: cargo check --locked --all-targets
+
+      - name: Exercise AI Copilot and secure exec contracts
+        # These tests use loopback protocol fixtures and pure mode/guardrail,
+        # profile-secret, action-review, and PTY prompt state; they do not
+        # require a real Provider, SSH target, or GUI.
+        # The Windows hosted runner can compile the Tauri test harness but
+        # cannot launch it reliably (STATUS_ENTRYPOINT_NOT_FOUND). Windows
+        # still compiles all targets above and runs the no-desktop fixtures
+        # below.
+        if: runner.os != 'Windows'
+        working-directory: apps/tauri/src-tauri
+        run: |
+          cargo test services::ai::tests --locked -- --test-threads=1
+          cargo test services::ai_guardrails::tests --locked -- --test-threads=1
+          cargo test services::action_review::tests --locked -- --test-threads=1
+          cargo test services::profile_ops::tests --locked -- --test-threads=1
+          cargo test sessions::system_metrics::tests --locked -- --test-threads=1
+
+      - name: Verify non-GUI CLI dispatch
+        working-directory: apps/tauri/src-tauri
+        run: |
+          cargo run --locked -- wait-transfer --help
+          cargo run --locked -- mcp --help
+
+      - name: Exercise platform-scoped secret storage and MCP contracts
+        # The Windows hosted runner can compile the Tauri test harness but
+        # cannot launch it reliably (STATUS_ENTRYPOINT_NOT_FOUND). These
+        # platform-independent contract tests run on the Unix runners; the
+        # Windows job still covers the full application check and lifecycle
+        # contracts below.
+        if: runner.os != 'Windows'
+        working-directory: apps/tauri/src-tauri
+        run: |
+          cargo test services::secret_crypto::tests --locked -- --test-threads=1
+          cargo test services::mcp::tests --locked -- --test-threads=1
+
+      - name: Exercise local PTY lifecycle
+        if: runner.os != 'Windows'
+        working-directory: apps/tauri/src-tauri
+        run: cargo test sessions::local_terminal::tests --locked -- --test-threads=1
+
+      - name: Exercise local ConPTY lifecycle without desktop runtime DLLs
+        if: runner.os == 'Windows'
+        timeout-minutes: 5
+        run: cargo test --manifest-path .github/fixtures/tauri-local-pty/Cargo.toml --locked -- --nocapture
+
+      - name: Verify direct Telnet socket release
+        if: runner.os != 'Windows'
+        working-directory: apps/tauri/src-tauri
+        run: cargo test sessions::telnet::tests::direct_transport_drop_releases_socket_on_every_desktop_platform
+
+      - name: Verify direct Telnet socket release without desktop runtime DLLs
+        if: runner.os == 'Windows'
+        run: cargo test --manifest-path .github/fixtures/tauri-socket-lifecycle/Cargo.toml --locked
+
+      - name: Exercise bounded Windows scheduler diagnostics without desktop runtime DLLs
+        if: runner.os == 'Windows'
+        timeout-minutes: 5
+        run: cargo test --manifest-path .github/fixtures/tauri-windows-scheduler/Cargo.toml --locked --features windows-scheduler-fixture -- --test-threads=1
+
+  tauri-package-smoke:
+    name: Tauri unsigned package smoke (${{ matrix.platform }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos
+            os: macos-26
+            rust_target: aarch64-apple-darwin
+          - platform: windows
+            os: windows-2022
+            rust_target: x86_64-pc-windows-msvc
+          - platform: linux
+            os: ubuntu-22.04
+            rust_target: x86_64-unknown-linux-gnu
+            arch: x86_64
+          - platform: linux-arm64
+            os: ubuntu-22.04-arm
+            rust_target: aarch64-unknown-linux-gnu
+            arch: arm64
+    runs-on: ${{ matrix.os }}
+    env:
+      TAURI_BUNDLER_DMG_IGNORE_CI: 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_target }}
+
+      - name: Install Windows native build dependencies
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          choco install nasm --version=2.16.01 --no-progress --yes
+          if ($LASTEXITCODE -ne 0) {
+            throw "Chocolatey failed to install NASM (exit code $LASTEXITCODE)"
+          }
+
+          $nasmPath = @(
+            (Join-Path $env:ProgramFiles 'NASM\nasm.exe')
+            (Join-Path ${env:ProgramFiles(x86)} 'NASM\nasm.exe')
+            (Join-Path $env:ChocolateyInstall 'bin\nasm.exe')
+          ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $nasmPath) {
+            throw 'NASM was installed but its executable could not be located'
+          }
+          Split-Path -Parent $nasmPath | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Verify NASM
+        if: runner.os == 'Windows'
+        run: nasm -v
+
+      - name: Install Linux Tauri package dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf libfuse2 file squashfs-tools zsync rpm cpio desktop-file-utils appstream
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build shared packages and typecheck Tauri
+        run: |
+          npm run build:packages
+          npm run typecheck -w @transterm/tauri
+
+      - name: Package unsigned application
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "${{ matrix.platform }}" in
+            macos)
+              npm run release:mac -w @transterm/tauri -- --no-sign --ci
+              ;;
+            windows)
+              npm run release:win -w @transterm/tauri -- --config src-tauri/tauri.ci.windows.conf.json --no-sign --ci
+              ;;
+            linux)
+              npm run release:linux -w @transterm/tauri -- --no-sign --ci
+              ;;
+            linux-arm64)
+              npm run release:linux:arm64 -w @transterm/tauri -- --no-sign --ci
+              ;;
+            *)
+              echo "Unknown package platform: ${{ matrix.platform }}" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Verify macOS package
+        if: matrix.platform == 'macos'
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle_root="apps/tauri/src-tauri/target/${{ matrix.rust_target }}/release/bundle"
+          test -d "$bundle_root/macos/TermHub.app"
+          test -n "$(find "$bundle_root/dmg" -maxdepth 1 -type f -name '*.dmg' -print -quit)"
+          app_bundle="$bundle_root/macos/TermHub.app"
+          dock_plugin="$app_bundle/Contents/PlugIns/TranstermDockTile.docktileplugin"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :NSDockTilePlugIn' "$app_bundle/Contents/Info.plist")" = "TranstermDockTile.docktileplugin"
+          codesign --verify --deep --strict "$dock_plugin"
+          xcrun clang -fobjc-arc -framework AppKit apps/tauri/src-tauri/macos-dock-tile/tests/lifecycle.m -o "$RUNNER_TEMP/transterm-dock-tile-test"
+          "$RUNNER_TEMP/transterm-dock-tile-test" "$dock_plugin"
+          cmp apps/tauri/src-tauri/icons/app/macos/icon.icns "$app_bundle/Contents/Resources/icon.icns"
+          "$bundle_root/macos/TermHub.app/Contents/MacOS/transterm" mcp --help
+          node ./scripts/mcp-stdio-smoke.mjs "$bundle_root/macos/TermHub.app/Contents/MacOS/transterm"
+
+      - name: Verify macOS DMG Finder layout
+        if: matrix.platform == 'macos'
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle_root="apps/tauri/src-tauri/target/${{ matrix.rust_target }}/release/bundle"
+          dmg_file="$(find "$bundle_root/dmg" -maxdepth 1 -type f -name '*.dmg' -print -quit)"
+          bash scripts/verify-macos-dmg-finder-layout.sh "$dmg_file"
+
+      - name: Verify Windows package
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $bundleDir = 'apps/tauri/src-tauri/target/${{ matrix.rust_target }}/release/bundle/nsis'
+          $installer = Get-ChildItem -LiteralPath $bundleDir -Filter '*-setup.exe' -File | Select-Object -First 1
+          if (-not $installer) { throw 'Unsigned NSIS installer was not generated.' }
+          if (Get-ChildItem -LiteralPath $bundleDir -Filter '*.sig' -File) {
+            throw 'Unsigned package smoke unexpectedly generated an updater signature.'
+          }
+          $binary = 'apps/tauri/src-tauri/target/${{ matrix.rust_target }}/release/TermHub.exe'
+          if (-not (Test-Path -LiteralPath $binary)) { throw 'Release Windows CLI binary was not generated.' }
+          & $binary mcp --help
+          node ./scripts/mcp-stdio-smoke.mjs $binary
+
+      - name: Verify Linux package
+        if: startsWith(matrix.platform, 'linux')
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle_root="apps/tauri/src-tauri/target/${{ matrix.rust_target }}/release/bundle"
+          deb_file="$(find "$bundle_root/deb" -maxdepth 1 -type f -name '*.deb' -print -quit)"
+          rpm_file="$(find "$bundle_root/rpm" -maxdepth 1 -type f -name '*.rpm' -print -quit)"
+          appimage_file="$(find "$bundle_root/appimage" -maxdepth 1 -type f -name '*.AppImage' -print -quit)"
+          test -n "$deb_file"
+          test -n "$rpm_file"
+          test -n "$appimage_file"
+          bash scripts/ensure-appimage-executable.sh "$appimage_file"
+          dpkg-deb --info "$deb_file"
+          if [[ "${{ matrix.platform }}" == "linux-arm64" ]]; then
+            expected_deb_arch=arm64
+            expected_rpm_arch=aarch64
+          else
+            expected_deb_arch=amd64
+            expected_rpm_arch=x86_64
+          fi
+          bash apps/tauri/scripts/verify-linux-package-metadata.sh \
+            "$bundle_root" "$expected_deb_arch" "$expected_rpm_arch" "$RUNNER_TEMP"
+          binary="apps/tauri/src-tauri/target/${{ matrix.rust_target }}/release/transterm"
+          test -x "$binary"
+          "$binary" mcp --help
+          node ./scripts/mcp-stdio-smoke.mjs "$binary"
+
+      - name: Stage DEB input for Arch package smoke
+        if: startsWith(matrix.platform, 'linux')
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(node -p 'require("./package.json").version')"
+          bundle_root="apps/tauri/src-tauri/target/${{ matrix.rust_target }}/release/bundle"
+          deb_file="$(find "$bundle_root/deb" -maxdepth 1 -type f -name '*.deb' -print -quit)"
+          test -n "$deb_file"
+          input_dir="${RUNNER_TEMP}/transterm-arch-inputs/deb"
+          mkdir -p "$input_dir"
+          cp "$deb_file" "$input_dir/transterm-${version}-linux-${{ matrix.arch }}.deb"
+
+      - name: Upload DEB input for Arch package smoke
+        if: startsWith(matrix.platform, 'linux')
+        uses: actions/upload-artifact@v6
+        with:
+          name: transterm-Linux-${{ matrix.arch }}
+          path: ${{ runner.temp }}/transterm-arch-inputs/
+          if-no-files-found: error
+          retention-days: 1
+
+  tauri-arch-package-smoke:
+    name: Tauri Arch package smoke
+    needs: tauri-package-smoke
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Download Linux DEB inputs
+        uses: actions/download-artifact@v7
+        with:
+          pattern: transterm-Linux-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/transterm-linux-inputs
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Build and verify Arch packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(node -p 'require("./package.json").version')"
+          output_dir="${RUNNER_TEMP}/transterm-arch-output"
+          bash apps/tauri/scripts/build-arch-packages.sh \
+            "$version" \
+            "${RUNNER_TEMP}/transterm-linux-inputs" \
+            "$output_dir"
+          for asset_arch in x86_64 arm64; do
+            package_file="$output_dir/transterm-${version}-linux-${asset_arch}.pkg.tar.zst"
+            test -s "$package_file"
+            echo "Built $package_file"
+          done
+
+  tauri-serial-virtual:
+    name: Tauri virtual serial (ubuntu-latest)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux Tauri link dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+
+      - name: Exercise a kernel PTY through tokio-serial
+        working-directory: apps/tauri/src-tauri
+        run: cargo test sessions::serial::tests::virtual_pty_round_trip_exercises_the_real_serial_stack
+
+  tauri-real-protocols:
+    name: Tauri quality and real protocol fixtures (ubuntu-latest)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Build shared packages for Tauri renderer
+        run: npm run build:packages
+
+      - name: Install protocol fixtures and Linux Tauri dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openssh-server openssl python3 libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+
+      - name: Typecheck Tauri renderer
+        run: npm run typecheck -w @transterm/tauri
+
+      - name: Check Rust formatting
+        working-directory: apps/tauri/src-tauri
+        run: cargo fmt --all -- --check
+
+      - name: Run strict Clippy
+        working-directory: apps/tauri/src-tauri
+        run: cargo clippy --locked --all-targets --all-features -- -D warnings
+
+      - name: Exercise Tauri protocol services
+        working-directory: apps/tauri/src-tauri
+        run: cargo test --locked -- --test-threads=1
+
+      - name: Build Tauri production binary
+        run: npm run build -w @transterm/tauri -- --no-bundle
+
+  rust-security-audit:
+    name: RustSec dependency audit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Audit Tauri Cargo.lock
+        # Official Node 24 migration commit; v2.0.0 still declares node20.
+        uses: rustsec/audit-check@858dc40f52ca2b8570b7a997c1c4e35c6fc9a432
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          working-directory: apps/tauri/src-tauri
+          # Scoped, time-bounded exceptions are reviewed in:
+          # docs/quality/rustsec-advisory-exceptions.md
+          ignore: RUSTSEC-2023-0071,RUSTSEC-2026-0194,RUSTSEC-2026-0195,RUSTSEC-2026-0367,RUSTSEC-2026-0368,RUSTSEC-2026-0369
+
+  validate:
+    name: validate
+    if: ${{ always() }}
+    needs:
+      - tauri-renderer-and-shared-quality
+      - tauri-socket-lifecycle
+      - tauri-package-smoke
+      - tauri-arch-package-smoke
+      - tauri-serial-virtual
+      - tauri-real-protocols
+      - rust-security-audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate required jobs
+        env:
+          RENDERER_RESULT: "${{ needs['tauri-renderer-and-shared-quality'].result }}"
+          SOCKET_RESULT: "${{ needs['tauri-socket-lifecycle'].result }}"
+          PACKAGE_RESULT: "${{ needs['tauri-package-smoke'].result }}"
+          ARCH_PACKAGE_RESULT: "${{ needs['tauri-arch-package-smoke'].result }}"
+          SERIAL_RESULT: "${{ needs['tauri-serial-virtual'].result }}"
+          PROTOCOL_RESULT: "${{ needs['tauri-real-protocols'].result }}"
+          SECURITY_RESULT: "${{ needs['rust-security-audit'].result }}"
+        run: |
+          set -euo pipefail
+          printf 'tauri-renderer-and-shared-quality: %s\n' "$RENDERER_RESULT"
+          printf 'tauri-socket-lifecycle: %s\n' "$SOCKET_RESULT"
+          printf 'tauri-package-smoke: %s\n' "$PACKAGE_RESULT"
+          printf 'tauri-arch-package-smoke: %s\n' "$ARCH_PACKAGE_RESULT"
+          printf 'tauri-serial-virtual: %s\n' "$SERIAL_RESULT"
+          printf 'tauri-real-protocols: %s\n' "$PROTOCOL_RESULT"
+          printf 'rust-security-audit: %s\n' "$SECURITY_RESULT"
+
+          if [ "$RENDERER_RESULT" != success ] ||
+            [ "$SOCKET_RESULT" != success ] ||
+            [ "$PACKAGE_RESULT" != success ] ||
+            [ "$ARCH_PACKAGE_RESULT" != success ] ||
+            [ "$SERIAL_RESULT" != success ] ||
+            [ "$PROTOCOL_RESULT" != success ] ||
+            [ "$SECURITY_RESULT" != success ]; then
+            echo 'One or more required CI jobs did not succeed.' >&2
+            exit 1
+          fi

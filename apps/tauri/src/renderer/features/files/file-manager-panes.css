@@ -1,0 +1,31 @@
+.file-table-shell--with-trailing-space {
+  /* Match four fixed-height file rows so a full directory can scroll past
+     its final entry and expose the pane-level context-menu target. */
+  padding-block-end: 96px;
+}
+
+.file-split--remote-tree {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.file-remote-shared-header {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.file-manager .pane-path-bar-actions .follow-shell-cwd-toggle,
+.file-manager .pane-path-bar-actions .remote-capability-panel summary {
+  background: var(--surface-input);
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-'])
+  .file-manager
+  :is(.pane-path-bar, .pane-filter-bar, .remote-directory-tree-header, .fs-file-table th) {
+  background: var(--surface-panel);
+}
+
+:root:is([data-theme-base='codex'], [data-theme-preset^='iterm2-'])
+  .file-manager
+  :is(.local-pane, .remote-pane, .file-table-shell) {
+  background: var(--surface-panel);
+}

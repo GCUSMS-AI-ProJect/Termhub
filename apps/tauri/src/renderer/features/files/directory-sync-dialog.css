@@ -1,0 +1,143 @@
+.directory-sync-dialog {
+  width: min(760px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px;
+  color: var(--text-primary);
+}
+.directory-sync-body-wrap {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.directory-sync-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  gap: 10px;
+  overflow: auto;
+  scrollbar-width: none;
+  padding-right: 10px;
+}
+.directory-sync-body::-webkit-scrollbar {
+  display: none;
+}
+.directory-sync-dialog header,
+.directory-sync-dialog footer,
+.directory-sync-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.directory-sync-dialog h2,
+.directory-sync-dialog p {
+  margin: 0;
+}
+.directory-sync-dialog p {
+  font-size: 13px;
+  line-height: 1.5;
+}
+.directory-sync-dialog footer {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+.directory-sync-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.directory-sync-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  font-size: 13px;
+}
+.directory-sync-fields label:first-child,
+.directory-sync-fields label:last-child {
+  grid-column: 1 / -1;
+}
+.directory-sync-dialog input,
+.directory-sync-dialog textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: var(--surface-panel);
+  color: var(--text-primary);
+}
+.directory-sync-actions > label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.directory-sync-actions > input {
+  max-width: 300px;
+}
+.directory-sync-list-wrap {
+  position: relative;
+  min-height: 100px;
+  flex: none;
+}
+.directory-sync-list {
+  height: 220px;
+  max-height: 30vh;
+  overflow: auto;
+  scrollbar-width: none;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+}
+.directory-sync-list::-webkit-scrollbar {
+  display: none;
+}
+.directory-sync-row {
+  position: absolute;
+  inset: 0 0 auto;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  height: 38px;
+  padding: 0 14px 0 10px;
+}
+.directory-sync-row > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.directory-sync-row > small {
+  color: var(--text-muted);
+}
+.directory-sync-error {
+  color: var(--status-danger);
+  overflow-wrap: anywhere;
+}
+@media (max-height: 700px) {
+  .directory-sync-dialog {
+    padding: 12px;
+    gap: 6px;
+  }
+  .directory-sync-fields {
+    gap: 6px;
+  }
+  .directory-sync-fields textarea {
+    height: 55px;
+  }
+  .directory-sync-list {
+    height: 150px;
+  }
+}
+@media (max-width: 550px) {
+  .directory-sync-fields {
+    grid-template-columns: 1fr;
+  }
+}

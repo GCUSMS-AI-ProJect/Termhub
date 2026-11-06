@@ -1,0 +1,8 @@
+**/node_modules/
+**/dist/
+**/release/
+**/coverage/
+package-lock.json
+
+# Preserve the upstream-generated UI/UX Pro Max Codex entry verbatim.
+.agents/skills/ui-ux-pro-max/SKILL.md
