@@ -14,7 +14,8 @@ import subprocess
 import tempfile
 
 
-PREFIX = Path("/usr/lib/transterm/runtime")
+# Embedded ELF strings must fit inside /usr/lib/x86_64-linux-gnu (23 bytes).
+PREFIX = Path("/usr/lib/transterm/rt")
 LIBDIR = b"/usr/lib/x86_64-linux-gnu"
 RELOCATIONS = (
     (LIBDIR, bytes(PREFIX)),
