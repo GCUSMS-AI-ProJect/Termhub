@@ -6247,7 +6247,7 @@ dependencies = [
 
 [[package]]
 name = "transterm"
-version = "2.3.1-beta.10"
+version = "2.3.1-beta.11"
 dependencies = [
  "aes-gcm",
  "arboard",

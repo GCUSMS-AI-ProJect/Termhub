@@ -1,0 +1,24 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "build": { "beforeBundleCommand": null },
+  "bundle": {
+    "useLocalToolsDir": true,
+    "createUpdaterArtifacts": false,
+    "targets": ["nsis"],
+    "resources": {
+      "resources/rea/": "rea/",
+      "target/release/WebView2Loader.dll": "WebView2Loader.dll",
+      "../../../LICENSE": "LICENSE",
+      "../../../THIRD_PARTY_NOTICES.md": "THIRD_PARTY_NOTICES.md"
+    },
+    "windows": {
+      "webviewInstallMode": { "type": "fixedRuntime", "path": "webview2-runtime" },
+      "nsis": {
+        "installerHooks": "scripts/windows-offline-hooks.nsh",
+        "languages": ["SimpChinese", "English"],
+        "displayLanguageSelector": true,
+        "installMode": "currentUser"
+      }
+    }
+  }
+}

@@ -13,8 +13,19 @@ pub fn resolve_launch(
 ) -> Result<LocalTerminalLaunch, String> {
     let defaults = default_launch();
     let options = options.unwrap_or_default();
+    let shell = options.shell.unwrap_or(defaults.shell);
+    #[cfg(target_os = "windows")]
+    let shell = resolve_windows_shell(&shell).unwrap_or_else(|| {
+        // Older preferences stored the optional PowerShell 7 command even on
+        // machines where it was not installed. Preserve explicit custom paths.
+        if shell.eq_ignore_ascii_case("pwsh.exe") {
+            default_shell()
+        } else {
+            shell
+        }
+    });
     let launch = LocalTerminalLaunch {
-        shell: options.shell.unwrap_or(defaults.shell),
+        shell,
         title: options
             .title
             .map(|title| title.trim().to_string())

@@ -2,7 +2,7 @@
 
 面向开发者和运维人员的桌面远程工作台，集成 SSH、本地终端、SFTP、FTP/FTPS、传输管理和 AI 助手。
 
-[源码仓库](https://gitee.com/ai-design-gcusms/termhub) · [中文使用说明](README_ZH.md) · [English](README_EN.md)
+[源码仓库](https://github.com/GCUSMS-AI-ProJect/Termhub) · [中文使用说明](README_ZH.md) · [English](README_EN.md)
 
 当前源码版本为 `2.3.1-beta.10`。本仓库基于 [St0ff3l/fileterm](https://github.com/St0ff3l/fileterm)，源码来自 [gcusms/fileterm](https://github.com/gcusms/fileterm) fork。历史构建记录不代表已经发布可下载的 TermHub 正式版；请从源码运行或自行构建。
 

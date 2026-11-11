@@ -2,7 +2,7 @@
 
 面向开发者和运维人员的桌面远程工作台，将终端、远程文件管理、传输任务和 AI 助手集中到一个工作区。
 
-[项目首页](./README.md) · [English](./README_EN.md) · [源码仓库](https://gitee.com/ai-design-gcusms/termhub)
+[项目首页](./README.md) · [English](./README_EN.md) · [源码仓库](https://github.com/GCUSMS-AI-ProJect/Termhub)
 
 ## 项目状态与来源
 
@@ -46,7 +46,7 @@
 所有命令均在包含根 `package.json` 的仓库目录执行：
 
 ```powershell
-git clone https://gitee.com/ai-design-gcusms/termhub.git
+git clone https://github.com/GCUSMS-AI-ProJect/Termhub.git
 cd termhub
 npm ci
 npm run dev
@@ -119,6 +119,6 @@ docs/                  架构、设计、计划与质量记录
 
 ## 参与开发与反馈
 
-请在 [TermHub 仓库](https://gitee.com/ai-design-gcusms/termhub)反馈问题，附上操作系统、应用版本、复现步骤及脱敏日志。
+请在 [TermHub 仓库](https://github.com/GCUSMS-AI-ProJect/Termhub)反馈问题，附上操作系统、应用版本、复现步骤及脱敏日志。
 
 开发约束见 [AGENTS.md](./AGENTS.md)，架构见 [docs/architecture.md](./docs/architecture.md)，后续规划见 [docs/roadmap.md](./docs/roadmap.md)。历史验收记录只对应记录中的版本、提交与平台，不代表当前源码已重新验证。

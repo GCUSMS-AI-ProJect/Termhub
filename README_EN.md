@@ -2,7 +2,7 @@
 
 A desktop remote workspace for developers and operators, combining terminals, remote files, transfers, and an AI assistant.
 
-[Project overview (中文)](./README.md) · [中文使用说明](./README_ZH.md) · [Source repository](https://gitee.com/ai-design-gcusms/termhub)
+[Project overview (中文)](./README.md) · [中文使用说明](./README_ZH.md) · [Source repository](https://github.com/GCUSMS-AI-ProJect/Termhub)
 
 ## Status and attribution
 
@@ -38,7 +38,7 @@ Requirements:
 Run commands from the repository root:
 
 ```powershell
-git clone https://gitee.com/ai-design-gcusms/termhub.git
+git clone https://github.com/GCUSMS-AI-ProJect/Termhub.git
 cd termhub
 npm ci
 npm run dev
@@ -90,4 +90,4 @@ Packaging workflows describe supported build paths, not available public release
 
 The application lives in `apps/tauri`. React calls the typed bridge, which invokes Rust commands, services, and protocol sessions. Shared domain contracts live in `packages/core`; SSH patches live in `vendor/russh`.
 
-See the [architecture](./docs/architecture.md), [agent guide](./AGENTS.md), [release acceptance plan](./docs/plans/active/release-candidate-acceptance.md), and [Chinese guide](./README_ZH.md) for details. Report issues in the [TermHub repository](https://gitee.com/ai-design-gcusms/termhub) with the platform, version, reproduction steps, and redacted logs.
+See the [architecture](./docs/architecture.md), [agent guide](./AGENTS.md), [release acceptance plan](./docs/plans/active/release-candidate-acceptance.md), and [Chinese guide](./README_ZH.md) for details. Report issues in the [TermHub repository](https://github.com/GCUSMS-AI-ProJect/Termhub) with the platform, version, reproduction steps, and redacted logs.

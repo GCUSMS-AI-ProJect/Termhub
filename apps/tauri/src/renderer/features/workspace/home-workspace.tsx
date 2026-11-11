@@ -227,7 +227,7 @@ export function HomeWorkspace({
 
   const handleOpenDocs = () => {
     if (desktopApi) {
-      void openExternalUrl('https://github.com/gcusms/fileterm')
+      void openExternalUrl('https://github.com/GCUSMS-AI-ProJect/Termhub')
     }
   }
 
@@ -237,7 +237,7 @@ export function HomeWorkspace({
         if (updateStatus.isPortable) {
           setPortableUpdateDialogOpen(true)
         } else {
-          void openExternalUrl(updateStatus.releaseUrl ?? 'https://github.com/gcusms/fileterm/releases')
+          void openExternalUrl(updateStatus.releaseUrl ?? 'https://github.com/GCUSMS-AI-ProJect/Termhub/releases')
         }
       } else {
         void desktopApi?.downloadUpdate()
@@ -619,7 +619,7 @@ export function HomeWorkspace({
           onClose={() => setPortableUpdateDialogOpen(false)}
           onOpenReleasePage={() => {
             if (import.meta.env.DEV && !updateStatus?.isPortable) return
-            void openExternalUrl(updateStatus?.releaseUrl ?? 'https://github.com/gcusms/fileterm/releases')
+            void openExternalUrl(updateStatus?.releaseUrl ?? 'https://github.com/GCUSMS-AI-ProJect/Termhub/releases')
           }}
         />
       ) : null}

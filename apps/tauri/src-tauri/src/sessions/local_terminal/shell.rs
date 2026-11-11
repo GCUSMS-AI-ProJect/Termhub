@@ -178,10 +178,8 @@ fn default_shell() -> String {
 
 #[cfg(target_os = "windows")]
 fn resolve_windows_shell(name: &str) -> Option<String> {
-    if let Some(path_var) = env::var_os("PATH") {
-        if env::split_paths(&path_var).any(|dir| dir.join(name).is_file()) {
-            return Some(name.to_string());
-        }
+    if let Some(path) = executable_on_path(name) {
+        return Some(path.to_string_lossy().into_owned());
     }
 
     standard_windows_shell_path(name).map(|path| path.to_string_lossy().into_owned())

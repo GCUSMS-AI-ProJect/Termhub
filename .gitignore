@@ -46,3 +46,4 @@ __pycache__/
 /fileterm-tree.json
 /fileterm-package-preview.json
 /apps/tauri/src-tauri/resources/rea/
+/apps/tauri/src-tauri/webview2-runtime/

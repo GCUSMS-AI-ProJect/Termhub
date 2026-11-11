@@ -1,6 +1,6 @@
 [package]
 name = "transterm"
-version = "2.3.1-beta.10"
+version = "2.3.1-beta.11"
 description = "TermHub desktop workspace"
 authors = ["FileTerm"]
 edition = "2021"
