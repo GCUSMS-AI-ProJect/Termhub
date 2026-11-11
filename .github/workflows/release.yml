@@ -395,7 +395,7 @@ jobs:
                 printf "Debian 11 transterm CLI smoke failed:\n%s\n" "$trace" >&2
                 exit 1
               fi
-              if ! grep -Fq "+ exec /usr/lib/transterm/runtime/transterm --help" <<< "$trace"; then
+              if ! grep -Fq "+ exec /usr/lib/transterm/rt/transterm --help" <<< "$trace"; then
                 printf "Debian 11 launcher did not select the private runtime:\n%s\n" "$trace" >&2
                 exit 1
               fi
