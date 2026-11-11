@@ -95,7 +95,9 @@ export function UpdatesSettingsPanel() {
                   if (updateStatus.isPortable) {
                     setPortableUpdateDialogOpen(true)
                   } else {
-                    void openExternalUrl(updateStatus.releaseUrl ?? 'https://github.com/gcusms/fileterm/releases')
+                    void openExternalUrl(
+                      updateStatus.releaseUrl ?? 'https://github.com/GCUSMS-AI-ProJect/Termhub/releases'
+                    )
                   }
                 } else {
                   void desktopApi?.downloadUpdate()
@@ -137,7 +139,7 @@ export function UpdatesSettingsPanel() {
         <PortableUpdateDialog
           onClose={() => setPortableUpdateDialogOpen(false)}
           onOpenReleasePage={() =>
-            void openExternalUrl(updateStatus?.releaseUrl ?? 'https://github.com/gcusms/fileterm/releases')
+            void openExternalUrl(updateStatus?.releaseUrl ?? 'https://github.com/GCUSMS-AI-ProJect/Termhub/releases')
           }
         />
       ) : null}
@@ -157,6 +159,6 @@ function getUpdateStatusLabel(status: AppUpdateStatus | null, labels: LocaleMess
   if (status.state === 'not-available') return labels.updateNotAvailable
   if (status.state === 'checking') return labels.checkingForUpdates
   if (status.state === 'error') return `${labels.updateFailed}: ${status.message ?? '—'}`
-  if (status.state === 'unsupported') return labels.updateUnsupported
+  if (status.state === 'unsupported') return status.message || labels.updateUnsupported
   return labels.updateStatusIdle
 }

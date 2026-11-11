@@ -41,7 +41,7 @@ use webview2_com::Microsoft::Web::WebView2::Win32::{
     ICoreWebView2Settings3, ICoreWebView2Settings5,
 };
 #[cfg(target_os = "windows")]
-use windows::core::Interface;
+use windows_core::Interface;
 
 include!("lib/error.rs");
 include!("lib/state.rs");

@@ -1,71 +1,47 @@
 # TermHub
 
-面向开发者和运维人员的桌面远程工作台，集成 SSH、本地终端、SFTP、FTP/FTPS、传输管理和 AI 助手。
+TermHub 是面向开发者和运维人员的桌面远程工作台，将远程连接、本地终端、文件管理和 AI 助手集中在一个应用中。
 
-[源码仓库](https://gitee.com/ai-design-gcusms/termhub) · [中文使用说明](README_ZH.md) · [English](README_EN.md)
+[下载安装](https://github.com/GCUSMS-AI-ProJect/Termhub/releases) · [问题反馈](https://github.com/GCUSMS-AI-ProJect/Termhub/issues) · [详细说明](README_ZH.md) · [English](README_EN.md)
 
-当前源码版本为 `2.3.1-beta.10`。本仓库基于 [St0ff3l/fileterm](https://github.com/St0ff3l/fileterm)，源码来自 [gcusms/fileterm](https://github.com/gcusms/fileterm) fork。历史构建记录不代表已经发布可下载的 TermHub 正式版；请从源码运行或自行构建。
+## 主要功能
 
-产品名称为 **TermHub**，保留原有界面、图标、布局及 REA 功能。应用继续使用既有 `com.transterm.desktop` 配置目录，现有连接、设置、密钥和外部工具接口无需因改名而迁移。源码 workspace、Rust crate、主题 ID 与内部通信名称保留兼容标识。
+- **终端与连接**：SSH、本地终端、多标签工作区和终端分屏。
+- **文件管理**：SFTP、FTP/FTPS、本地文件浏览，以及文件上传、下载和传输队列。
+- **连接管理**：保存主机配置，管理连接分组、SSH 密钥、代理和隧道。
+- **远程工作**：终端与文件目录联动，查看远程主机系统信息。
+- **AI 助手**：接入用户配置的模型服务，辅助分析终端内容和处理工作任务；可按需启用 REA 工具。
+- **个性化设置**：主题、终端字体、界面语言及工作区布局设置。
 
-## 来源
+## 下载与安装
 
-- fileterm：`ef044caa8868d9edbf5eb0165d31865009897b0b`，版本 `2.3.1-beta.10`。
-- REA：版本 `6.7.0`，参考提交 `90e433df06b3f83417176b8db1b0a905f9df1d3a`；独立依赖与锁文件位于 `apps/tauri/rea-runtime/`。
-- REA 已接入 AI 面板：点击聊天输入栏的 REA 图标后可使用本地或远端分析工具；默认关闭，SSH 通过独立通道运行。软件随附本地运行时，普通终端/文件功能不依赖它。见 [REA 使用说明](docs/rea.md)和[最初调研](REA_NOTES.zh-CN.md)。
+前往 [Releases](https://github.com/GCUSMS-AI-ProJect/Termhub/releases)，选择对应版本的安装包。
 
-## 开发
+当前提供 Windows 10/11 x64 离线安装包：
 
-需要 Node.js 22.19+、24.11+ 或 26+、npm、Rust stable，以及当前平台的 Tauri v2 构建依赖。Windows 桌面构建需要 MSVC C++ Build Tools、Windows SDK 和 WebView2。开发与构建会自动准备内置 REA 运行时。
+1. 下载名称以 `x64-setup.exe` 结尾的安装文件。
+2. 运行安装包，按照向导完成安装。
+3. 从开始菜单或桌面快捷方式启动 TermHub。
 
-```powershell
-npm ci
-npm run dev
-```
+离线安装包内置 WebView2 和所需运行时，无需安装 Node.js、Rust 等开发工具。测试版本标记为预发布版；其他平台的下载以发行页实际附件为准。
 
-只预览前端界面：
+## 开始使用
 
-```powershell
-npm run build:packages
-npm run dev:renderer -w @transterm/tauri
-```
+- **连接服务器**：新建连接，填写主机地址、端口和认证信息，保存后连接。
+- **使用本地终端**：打开本地终端；可在设置中选择本机可用的 Shell。
+- **管理文件**：在支持的连接中打开文件面板，浏览目录并上传或下载文件。
+- **使用 AI 助手**：配置模型服务地址、模型及访问凭据后使用。联网模型服务可能将所选上下文发送至对应服务商，请按需选择内容。
 
-浏览器预览不提供真实 SSH/SFTP 或其他桌面系统能力；完整功能需要通过 Tauri 运行。
+REA 默认关闭，普通终端和文件管理功能不依赖它。详见 [REA 使用说明](docs/rea.md)。
 
-浏览器入口会自动选择预览模式，不调用原生窗口接口。首页提示条采用浮层布局，不占用工作区网格行。
+## 版本更新
 
-## 检查与构建
+当前采用手动更新方式。请从 [发行页](https://github.com/GCUSMS-AI-ProJect/Termhub/releases) 下载新版本安装包，退出 TermHub 后进行安装。
 
-```powershell
-npm run typecheck
-npm run lint
-npm run test:renderer -w @transterm/tauri
-npm run test:tauri
-npm run build
-```
+## 问题反馈
 
-完整功能与开发说明见 [中文说明](README_ZH.md)、[英文说明](README_EN.md)及 [架构说明](docs/architecture.md)。所有命令在包含根 `package.json` 的仓库目录执行。
+请在 [GitHub Issues](https://github.com/GCUSMS-AI-ProJect/Termhub/issues) 提供软件版本、操作系统和复现步骤。提交截图或日志前，请移除密码、私钥、访问令牌等敏感信息。
 
-## 打包与更新
+## 许可证与致谢
 
-`npm run build` 使用现有 Tauri 构建流程。发布命令保留为 `npm run release:win`、`npm run release:mac` 和 `npm run release:linux`。
-
-Windows 本地安装包（无需配置更新签名密钥）：
-
-```powershell
-npm run build:win
-```
-
-该命令复用 Windows CI 的 NSIS 配置，不生成自动更新签名产物。生成的程序在 `apps/tauri/src-tauri/target/release/TermHub.exe`，安装包在同级 `bundle/nsis/`。需要 Rust stable MSVC、C++ Build Tools、Windows SDK、WebView2 和 NASM；`cargo` 与 `nasm` 需在 PATH 中。
-
-直接分发 Windows 程序时，请保留同目录的完整 `rea/` 运行时和许可文件。历史交付路径与改名验收见 [TermHub 名称验收](docs/quality/termhub-brand-validation.md)；其中的本地 `release/` 产物不随源码克隆提供，也不代表当前提交已重新构建或验收。
-
-Windows 本地启动依赖、`WebView2Loader.dll` 缺失修复、独立 WebView2 和本次启动验证范围见 [Windows 本地启动记录](docs/quality/windows-local-startup.md)。
-
-当前源码托管于 Gitee；保留的 `.github/workflows/` 为 GitHub Actions 配置，不会因推送到 Gitee 自动执行。
-
-Windows 更新地址仍指向 `gcusms/fileterm`，`plugins.updater.pubkey` 为空，尚未配置完成 TermHub 签名更新渠道。发布前需设置自己的更新端点，将公钥写入 `apps/tauri/src-tauri/tauri.windows.conf.json`，并在发布环境配置 `TAURI_SIGNING_PRIVATE_KEY`。私钥不进入源码。本次文档整理不改变运行时更新地址。
-
-## 许可证
-
-保留原作者的 [MIT LICENSE](LICENSE)、版权信息及 [第三方许可声明](THIRD_PARTY_NOTICES.md)。字体、图标和 vendor 内容继续适用其各自的许可证。
+TermHub 基于 [fileterm](https://github.com/St0ff3l/fileterm) 开发，保留原作者版权信息。项目采用 [MIT License](LICENSE)，其他组件适用各自的 [第三方许可证](THIRD_PARTY_NOTICES.md)。

@@ -1,5 +1,65 @@
 #[cfg(test)]
 mod tests {
+    #[cfg(windows)]
+    #[test]
+    fn windows_default_shell_uses_a_resolved_path_and_starts_in_conpty() {
+        use std::io::{Read, Write};
+        let launch = super::resolve_launch(None).expect("resolve default shell");
+        assert!(std::path::Path::new(&launch.shell).is_absolute());
+        assert!(std::path::Path::new(&launch.shell).is_file());
+        let pair = portable_pty::native_pty_system()
+            .openpty(portable_pty::PtySize::default())
+            .expect("allocate ConPTY");
+        let mut command = portable_pty::CommandBuilder::new(&launch.shell);
+        let args = if super::shell_name(&launch.shell) == "cmd.exe" {
+            vec!["/C".to_string(), "exit 0".to_string()]
+        } else {
+            vec!["-Command".to_string(), "exit 0".to_string()]
+        };
+        super::configure_shell_command(
+            &mut command,
+            &launch.shell,
+            &args,
+            &std::collections::BTreeMap::new(),
+        );
+        let mut child = pair.slave.spawn_command(command).expect("start resolved shell");
+        drop(pair.slave);
+        let mut reader = pair.master.try_clone_reader().expect("read ConPTY");
+        let mut writer = pair.master.take_writer().expect("write ConPTY");
+        let (output_tx, output_rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let mut buffer = [0_u8; 4096];
+            while let Ok(count) = reader.read(&mut buffer) {
+                if count == 0 {
+                    break;
+                }
+                let _ = output_tx.send(buffer[..count].to_vec());
+            }
+        });
+        let mut output = Vec::new();
+        let mut replied_cpr = false;
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(20);
+        loop {
+            for bytes in output_rx.try_iter() {
+                output.extend_from_slice(&bytes);
+            }
+            if !replied_cpr && output.windows(4).any(|bytes| bytes == b"\x1b[6n") {
+                writer.write_all(b"\x1b[1;1R").expect("reply to cursor query");
+                writer.flush().expect("flush cursor reply");
+                replied_cpr = true;
+            }
+            if let Some(status) = child.try_wait().expect("query shell") {
+                assert!(status.success());
+                break;
+            }
+            if std::time::Instant::now() >= deadline {
+                let _ = child.kill();
+                panic!("resolved shell did not exit");
+            }
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+    }
+
     use std::collections::BTreeMap;
     #[cfg(unix)]
     use std::io::Read;

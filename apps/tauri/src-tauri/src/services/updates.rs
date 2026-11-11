@@ -15,14 +15,17 @@ use crate::AppError;
 pub mod portable;
 
 const RELEASES_API: &str = "https://api.github.com/repos/gcusms/fileterm/releases?per_page=100";
-const LATEST_RELEASE_PAGE: &str = "https://github.com/gcusms/fileterm/releases/latest";
-const ALL_RELEASES_PAGE: &str = "https://github.com/gcusms/fileterm/releases";
+const LATEST_RELEASE_PAGE: &str = "https://github.com/GCUSMS-AI-ProJect/Termhub/releases/latest";
+const ALL_RELEASES_PAGE: &str = "https://github.com/GCUSMS-AI-ProJect/Termhub/releases";
 #[cfg(target_os = "windows")]
-const RELEASE_DOWNLOAD_BASE: &str = "https://github.com/gcusms/fileterm/releases/download";
+const RELEASE_DOWNLOAD_BASE: &str =
+    "https://github.com/GCUSMS-AI-ProJect/Termhub/releases/download";
 const DEFAULT_UPDATE_CHANNEL: &str = "beta";
+// GitHub distributions currently provide manual installers, without a signed
+// updater feed. Do not query the historical upstream on these builds.
+const MANUAL_RELEASE_PAGE: &str = "https://github.com/GCUSMS-AI-ProJect/Termhub/releases";
+const MANUAL_UPDATES_ONLY: bool = true;
 const RELEASE_PAGE_UPDATE_MODE: &str = "release-page";
-#[cfg(target_os = "windows")]
-const IN_APP_UPDATE_MODE: &str = "in-app";
 
 #[derive(Clone, Debug, Deserialize)]
 struct GithubRelease {
@@ -99,7 +102,7 @@ const fn is_portable_build() -> bool {
 
 #[cfg(target_os = "windows")]
 const fn primary_update_mode() -> &'static str {
-    IN_APP_UPDATE_MODE
+    RELEASE_PAGE_UPDATE_MODE
 }
 
 #[cfg(not(target_os = "windows"))]
@@ -122,6 +125,9 @@ const fn initial_update_message(_: &str) -> &'static str {
 }
 
 fn initial_status(app: &AppHandle) -> serde_json::Value {
+    if MANUAL_UPDATES_ONLY {
+        return manual_update_status(app);
+    }
     let channel = update_channel(app);
     let update_mode = primary_update_mode();
 
@@ -139,6 +145,17 @@ fn initial_status(app: &AppHandle) -> serde_json::Value {
         "isPortable": is_portable_build(),
         "updateChannel": channel,
         "message": initial_update_message(update_mode),
+    })
+}
+
+fn manual_update_status(app: &AppHandle) -> serde_json::Value {
+    serde_json::json!({
+        "state": "unsupported",
+        "currentVersion": current_version(app),
+        "updateMode": RELEASE_PAGE_UPDATE_MODE,
+        "updateChannel": update_channel(app),
+        "releaseUrl": MANUAL_RELEASE_PAGE,
+        "message": "此版本使用 GitHub 手动更新，请前往发行页下载安装包。",
     })
 }
 
@@ -379,6 +396,11 @@ async fn check_windows_update(app: &AppHandle) -> serde_json::Value {
 }
 
 pub async fn check(app: &AppHandle) -> Result<serde_json::Value, AppError> {
+    if MANUAL_UPDATES_ONLY {
+        let status = manual_update_status(app);
+        set_status(app, status.clone()).await;
+        return Ok(status);
+    }
     let update_check = app
         .state::<crate::services::workspace::WorkspaceState>()
         .update_check
@@ -436,6 +458,9 @@ pub async fn check(app: &AppHandle) -> Result<serde_json::Value, AppError> {
 }
 
 pub async fn open_release_page(app: &AppHandle) -> Result<(), AppError> {
+    if MANUAL_UPDATES_ONLY {
+        return super::external_links::open_url(app, MANUAL_RELEASE_PAGE).await;
+    }
     let status = get_status(app).await;
     let url = status
         .get("releaseUrl")
@@ -725,7 +750,9 @@ mod tests {
     fn release(tag_name: &str, prerelease: bool) -> GithubRelease {
         GithubRelease {
             tag_name: tag_name.to_string(),
-            html_url: format!("https://github.com/gcusms/fileterm/releases/tag/{tag_name}"),
+            html_url: format!(
+                "https://github.com/GCUSMS-AI-ProJect/Termhub/releases/tag/{tag_name}"
+            ),
             prerelease,
             draft: false,
         }

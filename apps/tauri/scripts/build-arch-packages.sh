@@ -53,7 +53,7 @@ for entry in "x86_64:x86_64" "arm64:aarch64"; do
   if [[ "$asset_arch" == "x86_64" ]]; then
     # The universal amd64 DEB includes a private Debian 11 compatibility
     # runtime. Arch already declares the native WebKitGTK/OpenSSL dependencies.
-    rm -rf -- "$build_dir/stage/usr/lib/transterm/runtime"
+    rm -rf -- "$build_dir/stage/usr/lib/transterm/rt"
     rm -rf -- "$build_dir/stage/usr/share/doc/file-term/private-runtime"
     cat > "$build_dir/stage/usr/bin/transterm" <<'EOF'
 #!/bin/sh
@@ -72,7 +72,7 @@ EOF
       exit 1
     fi
   done
-  if [[ "$asset_arch" == "x86_64" && -e "$build_dir/stage/usr/lib/transterm/runtime" ]]; then
+  if [[ "$asset_arch" == "x86_64" && -e "$build_dir/stage/usr/lib/transterm/rt" ]]; then
     echo "Arch package must not contain the private Debian compatibility runtime." >&2
     exit 1
   fi

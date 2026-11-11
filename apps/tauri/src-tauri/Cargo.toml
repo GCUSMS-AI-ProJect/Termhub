@@ -1,6 +1,6 @@
 [package]
 name = "transterm"
-version = "2.3.1-beta.10"
+version = "2.3.1-beta.11"
 description = "TermHub desktop workspace"
 authors = ["FileTerm"]
 edition = "2021"
@@ -57,12 +57,12 @@ suppaftp = { version = "10", default-features = false, features = ["tokio-async-
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
 portable-pty = "0.9"
 sys-locale = "0.3.2"
+image = { version = "0.25", default-features = false, features = ["png"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 raw-window-handle = "0.6"
-webview2-com = "0.38"
-image = { version = "0.25", default-features = false, features = ["png"] }
-windows-core = "0.61"
+webview2-com = "0.39"
+windows-core = "0.62"
 windows = { version = "0.61", features = [
   "Win32_Foundation",
   "Win32_Graphics_Gdi",

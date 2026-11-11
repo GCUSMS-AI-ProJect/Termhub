@@ -1,6 +1,6 @@
 {
   "name": "@transterm/storage",
-  "version": "2.3.1-beta.10",
+  "version": "2.3.1-beta.11",
   "private": true,
   "type": "module",
   "main": "dist/index.js",
@@ -13,6 +13,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@transterm/core": "2.3.1-beta.10"
+    "@transterm/core": "2.3.1-beta.11"
   }
 }
