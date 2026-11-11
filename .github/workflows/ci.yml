@@ -78,6 +78,10 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Prepare resource root for unbundled Rust checks
+        shell: bash
+        run: mkdir -p apps/tauri/src-tauri/resources/rea
+
       - name: Install Windows native build dependencies
         if: runner.os == 'Windows'
         shell: pwsh
@@ -411,6 +415,9 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Prepare resource root for unbundled Rust checks
+        run: mkdir -p apps/tauri/src-tauri/resources/rea
+
       - name: Install Linux Tauri link dependencies
         run: |
           sudo apt-get update
@@ -458,8 +465,12 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Run strict Clippy
+        # Cargo checks validate the resource directory without bundling REA.
+        # The production build below prepares the complete runtime.
         working-directory: apps/tauri/src-tauri
-        run: cargo clippy --locked --all-targets --all-features -- -D warnings
+        run: |
+          mkdir -p resources/rea
+          cargo clippy --locked --all-targets --all-features -- -D warnings
 
       - name: Exercise Tauri protocol services
         working-directory: apps/tauri/src-tauri

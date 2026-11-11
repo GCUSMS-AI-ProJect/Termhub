@@ -39,10 +39,15 @@ for launcher in AppRun AppRun.wrapped; do
   test -f "$appdir/$launcher"
 done
 
-# Keep the GNOME companion inside usr/share; AppDir permits only one root desktop entry.
-if [ -L "$appdir/com.transterm.desktop.desktop" ] || [ -f "$appdir/com.transterm.desktop.desktop" ]; then
-  unlink "$appdir/com.transterm.desktop.desktop"
-fi
+# Tauri may name the root entry after productName. Use the canonical launcher
+# for AppImage too, keeping the hidden GNOME companion inside usr/share.
+test -f "$appdir/usr/share/applications/transterm.desktop"
+for desktop_entry in "$appdir"/*.desktop; do
+  if [ -L "$desktop_entry" ] || [ -f "$desktop_entry" ]; then
+    unlink "$desktop_entry"
+  fi
+done
+ln -s usr/share/applications/transterm.desktop "$appdir/transterm.desktop"
 ln -sfn usr/share/icons/hicolor/256x256@2/apps/transterm.png "$appdir/transterm.png"
 
 # Runtime extraction may apply private permissions to its temporary tree, so
