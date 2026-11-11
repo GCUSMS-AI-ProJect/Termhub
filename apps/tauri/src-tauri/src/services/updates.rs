@@ -18,7 +18,8 @@ const RELEASES_API: &str = "https://api.github.com/repos/gcusms/fileterm/release
 const LATEST_RELEASE_PAGE: &str = "https://github.com/GCUSMS-AI-ProJect/Termhub/releases/latest";
 const ALL_RELEASES_PAGE: &str = "https://github.com/GCUSMS-AI-ProJect/Termhub/releases";
 #[cfg(target_os = "windows")]
-const RELEASE_DOWNLOAD_BASE: &str = "https://github.com/GCUSMS-AI-ProJect/Termhub/releases/download";
+const RELEASE_DOWNLOAD_BASE: &str =
+    "https://github.com/GCUSMS-AI-ProJect/Termhub/releases/download";
 const DEFAULT_UPDATE_CHANNEL: &str = "beta";
 // GitHub distributions currently provide manual installers, without a signed
 // updater feed. Do not query the historical upstream on these builds.
@@ -749,7 +750,9 @@ mod tests {
     fn release(tag_name: &str, prerelease: bool) -> GithubRelease {
         GithubRelease {
             tag_name: tag_name.to_string(),
-            html_url: format!("https://github.com/GCUSMS-AI-ProJect/Termhub/releases/tag/{tag_name}"),
+            html_url: format!(
+                "https://github.com/GCUSMS-AI-ProJect/Termhub/releases/tag/{tag_name}"
+            ),
             prerelease,
             draft: false,
         }
